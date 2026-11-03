@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --group dev ruff check src tests tools
+      - run: uv run --group dev mypy
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv run --group dev pytest -q
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      # The installed wheel must work on its own, data included.
+      - run: |
+          uv venv /tmp/wheel
+          uv pip install --python /tmp/wheel dist/*.whl
+          /tmp/wheel/bin/python -c "import gramoten; print(gramoten.__version__, gramoten.check('Здравейте, интрнет.'))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

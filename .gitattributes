@@ -1,0 +1,3 @@
+* text=auto eol=lf
+*.marisa binary
+*.whl binary

@@ -1,0 +1,85 @@
+[project]
+name = "gramoten"
+version = "0.1.0"
+description = "Bulgarian spelling, punctuation, grammar and format checks, by rule, with no language model"
+readme = "README.md"
+license = "MIT AND MPL-1.1 AND LicenseRef-Leipzig-CC-BY"
+license-files = ["LICENSE", "NOTICE", "tools/bg_BG/MPL-1.1.txt"]
+authors = [{ name = "Yasen Ivanov" }]
+requires-python = ">=3.11"
+dependencies = [
+    "marisa-trie>=1.2",
+]
+keywords = ["bulgarian", "spellcheck", "grammar", "punctuation", "proofreading"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: Bulgarian",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/vjfrosty/gramoten"
+Source = "https://github.com/vjfrosty/gramoten"
+Issues = "https://github.com/vjfrosty/gramoten/issues"
+Changelog = "https://github.com/vjfrosty/gramoten/blob/main/CHANGELOG.md"
+
+[project.scripts]
+gramoten = "gramoten.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+# The scripts in tools/ that rebuild the word lists from their sources.
+build-data = ["marisa-trie==1.4.1", "spylls==0.1.7", "psutil"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gramoten"]
+
+# The sdist is listed file by file, so nothing local (editor settings, downloads) gets in.
+# tools/ goes with it: the dictionary source and the scripts that build the word lists
+# from it, which the MPL-1.1 asks to be available.
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src/gramoten",
+    "assets",
+    "tests",
+    "tools",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "CHANGELOG.md",
+    "pyproject.toml",
+]
+exclude = ["__pycache__", "*.pyc", "tools/dl", "tools/morphology/dl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["tools/dl", "tools/morphology/dl"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+# Long lines hold measured examples; word lists stay written as "a b c".split(); and
+# %-formatting is kept where it reads better.
+ignore = ["E501", "SIM905", "UP031"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/gramoten"]
+ignore_missing_imports = true
+warn_unused_ignores = true

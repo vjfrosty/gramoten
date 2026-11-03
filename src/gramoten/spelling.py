@@ -1,0 +1,343 @@
+"""Bulgarian spelling against every word form of the bg_BG dictionary.
+
+The lowercased forms live in `data/bg_forms.marisa`, built by
+`tools/build_bg_forms.py` from bgOffice's Hunspell dictionary (taken under
+MPL-1.1; tools/bg_BG/SOURCE.md). No Hunspell engine runs: the trie is far smaller
+and faster with the same suggestions.
+
+`data/project_words.txt` adds reviewed modern words (смартфон, рутер, имейл, лв).
+
+Advice only: nothing here changes text or stops an export.
+"""
+
+from __future__ import annotations
+
+import threading
+from collections import OrderedDict
+from functools import lru_cache
+
+import marisa_trie
+
+from ._data import DATA
+
+ALPHABET = "абвгдежзийклмнопрстуфхцчшщъьюя"
+
+#: Words two edits away are added when fewer than this many are one edit away.
+FILL_TO = 5
+#: A safety limit for the two-edit search, in word starts looked up: a word needs
+#: 10,000-16,000 (15-30 ms). A count, not a time, so the result never depends on
+#: how fast the machine is.
+SECOND_EDIT_STEPS = 100_000
+
+#: Standard abbreviations (ОПР 2012), accepted when a full stop follows: `ул.`,
+#: `проф.`, `св.`, `стр.`.
+ABBREVIATIONS = frozenset(
+    """г гр ул бул пл жк кв бл вх ет ап обл общ напр вкл др проф доц инж арх акад
+ген полк зам св хр пр сл стр бр лв млн млрд хил тел факс жп сп изд прев ред ок прибл англ лат гр рус
+нем фр ит исп мин сек ч т н сл ср вж срв гл чл ал т.е т.нар т.н пр.хр сл.хр
+яну ян фев мар апр авг сеп сеп окт ное дек пон вт чет пет съб нед""".split()
+)
+#: Units, accepted with or without a full stop: `5 км`, `10 кг`.
+UNITS = frozenset("км м см мм кг г мг л мл дка ха кв.м мб гб кб мвт квт вт".split())
+
+#: All-capital words this short are acronyms (ДДС, ЕАД, УЕФА); they are not spelt.
+ACRONYM_MAX = 5
+
+
+@lru_cache(maxsize=1)
+def _forms() -> marisa_trie.Trie:
+    trie = marisa_trie.Trie()
+    trie.load(str(DATA / "bg_forms.marisa"))
+    return trie
+
+
+def _read_words(name: str) -> frozenset[str]:
+    path = DATA / name
+    if not path.exists():
+        return frozenset()
+    lines = (line.split("#", 1)[0].strip().lower() for line in path.read_text(encoding="utf-8").splitlines())
+    return frozenset(line for line in lines if line)
+
+
+@lru_cache(maxsize=1)
+def project_words() -> frozenset[str]:
+    """The reviewed project words, and the lists built by `tools/`:
+    telecom terms with every form (`build_telecom_words.py`), forms of address
+    (`build_vocatives.py`) and EU legal words (`build_eu_words.py`)."""
+    return frozenset().union(
+        *(
+            _read_words(name)
+            for name in ("project_words.txt", "telecom_words.txt", "vocative_words.txt", "eu_words.txt")
+        )
+    )
+
+
+@lru_cache(maxsize=1)
+def _frequency() -> marisa_trie.RecordTrie:
+    """How often each known form occurs in 2M sentences of Bulgarian news (2020) and
+    Wikipedia (2021), Leipzig Corpora Collection (CC BY): it ranks suggestions."""
+    trie = marisa_trie.RecordTrie("<I")
+    trie.load(str(DATA / "bg_frequency.marisa"))
+    return trie
+
+
+def _count(word: str) -> int:
+    found = _frequency().get(word)
+    return found[0][0] if found else 0
+
+
+@lru_cache(maxsize=1)
+def _modern() -> marisa_trie.Trie:
+    """Modern forms the dictionary lacks (`ползватели`, `коронавирус`, `брифинг`), from
+    2020-2021 news, Wikipedia and web text by `tools/build_modern_words.py`: in two
+    sources, never only capitalised, no colloquial form, and no likely typo of a frequent
+    word.
+
+    With them, their other forms, made by the paradigm of a dictionary word and kept
+    only when real text uses them (`tools/build_inflections.py`)."""
+    trie = marisa_trie.Trie()
+    trie.load(str(DATA / "modern_words.marisa"))
+    return trie
+
+
+def in_dictionary(lower: str) -> bool:
+    return lower in _forms()
+
+
+@lru_cache(maxsize=1)
+def _misspellings() -> marisa_trie.BytesTrie:
+    """`wrong → right` that people searched Chitanka for (`очудване` → `учудване`)."""
+    trie = marisa_trie.BytesTrie()
+    trie.load(str(DATA / "misspellings.marisa"))
+    return trie
+
+
+#: Loanwords a misspelling list maps to a near native word (`хаус` → `хаос`, `скраб`):
+#: right as they are, whatever the lists say.
+LOANWORDS = frozenset({"хаус", "реднек", "скраб", "друид"})
+
+
+@lru_cache(maxsize=1)
+def _corrections() -> dict[str, str]:
+    """`wrong → right` written for gramoten (`data/corrections.tsv`): misspellings the
+    added word lists would otherwise accept (`надежност`, `верно`, `мошенник`)."""
+    out = {}
+    for line in (DATA / "corrections.tsv").read_text(encoding="utf-8").splitlines():
+        wrong, _, right = line.split("#", 1)[0].strip().partition("	")
+        if right:
+            out[wrong] = right
+    return out
+
+
+@lru_cache(maxsize=1)
+def forbidden_words() -> frozenset[str]:
+    """Forms the added lists wrongly accept (`незнам`, `ходиме`, `фармацефт`) and the
+    misspellings in `corrections.tsv`: a known error is never correct. The bgOffice
+    dictionary wins over the generated list, but not over `corrections.tsv`, which also
+    lists the dictionary's few errors (`подтискане`)."""
+    return (_read_words("forbidden_words.txt") | frozenset(_corrections())) - LOANWORDS
+
+
+def known_correction(word: str) -> str | None:
+    """The correction for this misspelling, if one is known: what people looked up on
+    Chitanka, gramoten's own list, or a feminine noun in -ост/-ст missing its second т
+    (`радоста` → `радостта`)."""
+    lower = word.lower()
+    found = _misspellings().get(lower)
+    if found:
+        return found[0].decode("utf-8")
+    if lower in _corrections():
+        return _corrections()[lower]
+    if lower.endswith("ста") and in_dictionary(lower[:-1] + "та"):
+        return lower[:-1] + "та"
+    return None
+
+
+@lru_cache(maxsize=1)
+def _names() -> marisa_trie.Trie:
+    """Words Bulgarian news and Wikipedia write with a capital at least 20 times and
+    almost never lowercase (`обама`, `хамас`): a name, even at a sentence start."""
+    trie = marisa_trie.Trie()
+    trie.load(str(DATA / "names.marisa"))
+    return trie
+
+
+def is_name(word: str) -> bool:
+    """A capitalised word the corpora know as a name."""
+    return word[:1].isupper() and word.lower() in _names()
+
+
+def _known(lower: str, extra: frozenset[str]) -> bool:
+    if lower in extra or lower in LOANWORDS:
+        return True
+    if lower in _corrections():
+        return False  # gramoten's own list also overrides the dictionary's few errors (`подтискане`)
+    if lower in _forms():
+        return True
+    if lower in forbidden_words():
+        return False
+    return lower in _modern() or lower in project_words()
+
+
+def is_correct(word: str, extra: frozenset[str] = frozenset()) -> bool:
+    """True when every hyphen part is a known form, in any capitalisation."""
+    if word.isupper() and len(word) <= ACRONYM_MAX:
+        return True
+    lower = word.lower()
+    if _known(lower, extra):
+        return True
+    parts = lower.split("-")
+    return len(parts) > 1 and all(len(p) <= 1 or _known(p, extra) for p in parts)
+
+
+def _edits(word: str, upto: int | None = None) -> set[str]:
+    """Every string one edit away, the edit at position `upto` or before."""
+    splits = [(word[:i], word[i:]) for i in range(min(len(word), len(word) if upto is None else upto) + 1)]
+    return (
+        {a + b[1:] for a, b in splits if b}
+        | {a + b[1] + b[0] + b[2:] for a, b in splits if len(b) > 1}
+        | {a + c + b[1:] for a, b in splits if b for c in ALPHABET if c != b[0]}
+        | {a + c + b for a, b in splits for c in ALPHABET}
+    )
+
+
+def _shape(suggestion: str, like: str) -> str:
+    """Give a suggestion the capitalisation of the word it replaces."""
+    if like.isupper() and len(like) > 1:
+        return suggestion.upper()
+    if like[:1].isupper():
+        return suggestion[:1].upper() + suggestion[1:]
+    return suggestion
+
+
+def suggest(word: str, limit: int = 5, extra: frozenset[str] = frozenset(), deep: bool = True) -> list[str]:
+    """Known words one edit away, most used first; when fewer than `FILL_TO` and
+    `deep`, words two edits away follow, most used first.
+
+    `deep` lets a host limit how many words of a text get the two-edit search
+    (`gramoten.DEEP_SUGGESTIONS_PER_CALL`): one-edit suggestions, which cover most
+    typos, are always made.
+    """
+    ranked = list(_ranked(word.lower(), extra, deep))
+    correction = known_correction(word)
+    if correction and " " not in correction:
+        ranked = [correction] + [w for w in ranked if w != correction]
+    return [_shape(w, word) for w in ranked[:limit]]
+
+
+@lru_cache(maxsize=8)
+def _prefixes(extra: frozenset[str]) -> marisa_trie.Trie:
+    """The project words and added words as a trie, so their starts are a prefix search:
+    the word lists that are not tries. A set of every start took 16 ms and 3 MB."""
+    return marisa_trie.Trie(project_words() | extra)
+
+
+#: Suggestions already made, by (word, added words, deep), least recently used first.
+#: Only a search that finished within `SECOND_EDIT_STEPS` is kept.
+_RANKED: OrderedDict[tuple[str, frozenset[str], bool], tuple[str, ...]] = OrderedDict()
+_RANKED_MAX = 20_000
+_RANKED_LOCK = threading.Lock()
+
+
+def _ranked(lower: str, extra: frozenset[str], deep: bool) -> tuple[str, ...]:
+    key = (lower, extra, deep)
+    with _RANKED_LOCK:
+        if key in _RANKED:
+            _RANKED.move_to_end(key)
+            return _RANKED[key]
+    found, finished = _search(lower, extra, deep)
+    if finished:
+        with _RANKED_LOCK:
+            _RANKED[key] = found
+            while len(_RANKED) > _RANKED_MAX:
+                _RANKED.popitem(last=False)
+    return found
+
+
+def clear_suggestions() -> None:
+    """Forget every suggestion made, after the word lists change."""
+    with _RANKED_LOCK:
+        _RANKED.clear()
+
+
+def _search(lower: str, extra: frozenset[str], deep: bool) -> tuple[tuple[str, ...], bool]:
+    """Known words one edit from `lower`, else two if `deep`, most used first; and
+    whether the search finished within `SECOND_EDIT_STEPS`."""
+    forms, project, forbidden = _forms(), project_words(), forbidden_words()
+    modern = _modern()
+    tries = (forms, modern)
+    prefixes = _prefixes(extra)
+
+    corrections = _corrections()
+
+    def known(w: str) -> bool:
+        if w in extra:
+            return True
+        if w in forms:
+            return w not in corrections
+        return (w in modern or w in project) and w not in forbidden
+
+    def opens(prefix: str) -> bool:
+        return any(next(t.iterkeys(prefix), None) is not None for t in (*tries, prefixes))
+
+    def reach(w: str) -> int:
+        """The longest start of `w` some known word begins with. An edit after it cannot
+        reach a known word, since the start before an edit stays as it was."""
+        low, high = 0, len(w)
+        while low < high:
+            middle = (low + high + 1) // 2
+            if opens(w[:middle]):
+                low = middle
+            else:
+                high = middle - 1
+        return low
+
+    def by_use(words: set[str]) -> list[str]:
+        return sorted(words, key=lambda w: (-_count(w), w))
+
+    found = {w for w in _edits(lower, reach(lower)) if known(w)}
+    if not deep or len(found) >= FILL_TO:
+        return tuple(by_use(found)), True
+    # Fewer than FILL_TO words one edit away: words two edits away follow them.
+    two, finished = _within_two(lower, opens, known, SECOND_EDIT_STEPS)
+    return tuple(by_use(found) + by_use(two - found - {lower})), finished
+
+
+def _within_two(word: str, opens, known, steps: float) -> tuple[set[str], bool]:
+    """Every known word at most two edits (substitute, insert, delete, swap two
+    neighbours) from `word`, and whether the search finished within `steps` lookups.
+
+    It walks the word lists letter by letter and drops a branch as soon as no known
+    word begins with the letters built so far, so it finds the same words as editing
+    every one-edit string again, 5 to 40 times faster, and the same ones every time."""
+    found: set[str] = set()
+    seen: set[tuple[int, str, int]] = set()
+    starts: dict[str, bool] = {}
+
+    def begins(prefix: str) -> bool:
+        if prefix not in starts:
+            starts[prefix] = opens(prefix)
+        return starts[prefix]
+
+    stack = [(0, "", 2)]
+    while stack:
+        if len(starts) > steps:
+            return found, False
+        state = stack.pop()
+        if state in seen:
+            continue
+        seen.add(state)
+        i, built, left = state
+        if i == len(word) and known(built):
+            found.add(built)
+        if i < len(word) and begins(built + word[i]):
+            stack.append((i + 1, built + word[i], left))
+        if not left:
+            continue
+        if i < len(word):
+            stack.append((i + 1, built, left - 1))  # delete
+            stack += [(i + 1, built + c, left - 1) for c in ALPHABET if c != word[i] and begins(built + c)]
+            if i + 1 < len(word) and word[i] != word[i + 1] and begins(built + word[i + 1] + word[i]):
+                stack.append((i + 2, built + word[i + 1] + word[i], left - 1))  # swap
+        stack += [(i, built + c, left - 1) for c in ALPHABET if begins(built + c)]  # insert
+    return found, True
