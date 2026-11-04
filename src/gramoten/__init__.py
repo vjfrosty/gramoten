@@ -61,9 +61,9 @@ class Issue:
         }
 
 
-#: How many unknown words of one call get the two-edit suggestion search (15-30 ms a
-#: word); the rest get one-edit suggestions. A count, not a time, so the same text
-#: always gets the same suggestions.
+#: How many unknown words of one call get the two-edit suggestion search (5-15 ms a
+#: word); the rest get one-edit and sound-alike suggestions. A count, not a time, so the
+#: same text always gets the same suggestions.
 DEEP_SUGGESTIONS_PER_CALL = 20
 
 

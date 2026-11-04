@@ -47,6 +47,14 @@ class Spelling(unittest.TestCase):
             spelling.suggest(typo)
         self.assertLess((time.perf_counter() - started) / len(SENT_TYPOS), 0.2)
 
+    def test_word_starts_match_the_word_lists(self) -> None:
+        # Out of date after bg_forms or modern_words change: run tools/build_word_starts.py.
+        starts = spelling._word_starts()
+        words = spelling._forms().keys() + spelling._modern().keys()
+        expected = {w[:i] for w in words for i in range(1, len(w) + 1)}
+        self.assertEqual(len(starts), len(expected))
+        self.assertTrue(all(s in starts for s in expected))
+
     def test_offsets_point_at_the_word(self) -> None:
         text = "Вашият консулатант ще се свърже."
         [issue] = gramoten.check_spelling(text)
@@ -300,6 +308,66 @@ class Corrections(unittest.TestCase):
         self.assertEqual(
             [f for f in fixes("През 1990 г. и 5 млн. души", gramoten.KIND_FORMAT) if f[0] == "abbreviation_space"], []
         )
+
+    def test_the_year_of_a_full_date_takes_a_space(self) -> None:
+        self.assertIn(
+            ("abbreviation_space", "2024г.", "2024 г."), fixes("валидни до 31.12.2024г. или", gramoten.KIND_FORMAT)
+        )
+        self.assertIn(("abbreviation_space", "1991г.", "1991 г."), fixes("(1991г.- 1999г.)", gramoten.KIND_FORMAT))
+        self.assertEqual(
+            [f for f in fixes("поне 20 000г. В", gramoten.KIND_FORMAT) if f[0] == "abbreviation_space"], []
+        )
+
+    def test_glued_не_gets_the_two_words_first(self) -> None:
+        for wrong, right in (("неможе", "не може"), ("Незнам", "Не знам"), ("незнаейки", "не знаейки")):
+            with self.subTest(wrong=wrong):
+                self.assertFalse(spelling.is_correct(wrong))
+                self.assertEqual(spelling.suggest(wrong)[0], right)
+
+    def test_misspellings_the_lists_had_accepted_are_flagged(self) -> None:
+        cases = {
+            "тенесист": "тенисист",
+            "буклук": "боклук",
+            "манияк": "маниак",
+            "фърлям": "хвърлям",
+            "токущо": "току-що",
+            "безкруполни": "безскрупулни",
+            "тинейджърът": "тийнейджърът",
+        }
+        for wrong, right in cases.items():
+            with self.subTest(wrong=wrong):
+                self.assertFalse(spelling.is_correct(wrong))
+                self.assertEqual(spelling.suggest(wrong)[0], right)
+
+    def test_an_accepted_plural_has_its_articled_plural(self) -> None:
+        for word in ("антивирусите", "брандингите", "видеомонтажите", "сервисите", "мегасъбитията", "радиошоутата"):
+            with self.subTest(word=word):
+                self.assertTrue(spelling.is_correct(word))
+        # an adjective's feminine form on a noun model is no plural; a typo's plural has none
+        for word in ("анонимизираната", "абцесите", "второстепените", "трансперантните"):
+            with self.subTest(word=word):
+                self.assertFalse(spelling.is_correct(word))
+
+    def test_real_words_the_lists_lacked(self) -> None:
+        for word in (
+            "недоразбирам",
+            "машинерията",
+            "бан",
+            "ноу-хау",
+            "земеподобни",
+            "колците",
+            "краново",
+            "австро-унгарския",
+            "гръко-римска",
+            # the misspelling table lists these, wrongly
+            "брекети",
+            "стълп",
+            "лафи",
+            "шошони",
+        ):
+            with self.subTest(word=word):
+                self.assertTrue(spelling.is_correct(word))
+        self.assertFalse(spelling.is_correct("австро"))
 
     def test_a_day_before_the_month_has_no_leading_zero(self) -> None:
         self.assertIn(("date_leading_zero", "02", "2"), fixes("На 02 октомври 2020", gramoten.KIND_FORMAT))

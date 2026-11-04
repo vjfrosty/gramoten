@@ -90,6 +90,11 @@ class Orthography(unittest.TestCase):
             "12-та среща": ("ordinal_suffix", "12-та", "12-а"),
             "в 53-ата минута": ("ordinal_suffix", "53-ата", "53-тата"),
             "1-и ден": ("ordinal_suffix", "1-и", "1-ви"),
+            "7-ма степен": ("ordinal_suffix", "7-ма", "7-а"),
+            "8-мата година": ("ordinal_suffix", "8-мата", "8-ата"),
+            "14-ят ден": ("ordinal_suffix", "14-ят", "14-ият"),
+            "21-ят век": ("ordinal_suffix", "21-ят", "21-вият"),
+            "2-ят етап": ("ordinal_suffix", "2-ят", "2-рият"),
             "на 9-ти март": ("ordinal_date", "9-ти", "9"),
             "XXI-ви век": ("ordinal_roman", "XXI-ви", "XXI"),
             "19 годишен младеж": ("number_adjective", "19 годишен", "19-годишен"),
@@ -113,6 +118,10 @@ class Orthography(unittest.TestCase):
             "параграф 6 годишни доклади",
             "Й. Петров",
             "5-годишен",
+            "5-ма души",
+            "7-ма души",
+            "14-ият ден",
+            "21-вият век",
         ):
             with self.subTest(text=text):
                 self.assertEqual(

@@ -6,7 +6,7 @@ and the EU DGT Bulgarian style guide (2021).
 | Code | Rule | Fix |
 |---|---|---|
 | `pronoun_i` | the pronoun is `ѝ` since the 2012 dictionary; a standalone `й` is never a word | `ѝ` |
-| `ordinal_suffix` | after digits: 1 `-ви`, 2 `-ри`, 3 and 4 `-ти`, every other ending one letter: `5-и`, `7-и`, `12-и`, `20-и`; `5-ти`, `7-ми`, `20-ти` are wrong | the right suffix |
+| `ordinal_suffix` | after digits: 1 `-ви`, 2 `-ри`, 3 and 4 `-ти`, every other ending one letter: `5-и`, `7-и`, `12-и`, `20-и`; `5-ти`, `7-ми`, `7-ма`, `20-ти` are wrong; the article follows the и: `14-ият`, `21-вият` | the right suffix |
 | `ordinal_date` | a day before a month takes no suffix: `5-ти май` → `5 май` | the number |
 | `ordinal_roman` | a Roman numeral takes no suffix: `XXI-ви век` → `XXI век` | the numeral |
 | `number_adjective` | a number and an adjective in -годишен, -месечен, -дневен… are one word: `5 годишен` → `5-годишен`, `пет-годишен` → `петгодишен` | joined |
@@ -128,6 +128,14 @@ def _pronoun(text: str) -> list[Hit]:
     ]
 
 
+def _singular_next(after: str) -> bool:
+    """Whether the next word is a singular noun or adjective, so a `-ма` before it is an
+    ordinal (`7-ма степен`) and not a count of people (`7-ма души`)."""
+    m = re.match(r"([а-яА-Я]+)", after)
+    readings = morphology.analyse(m.group(1)) if m else ()
+    return bool(readings) and all(r.tag.get("n") == "s" and r.tag["pos"] in ("N", "A") for r in readings)
+
+
 def _ordinals(text: str) -> list[Hit]:
     hits = []
     for m in re.finditer(r"(?<![\w.,/-])(\d{1,4})-([а-я]{1,4})(?![\w-])", text):
@@ -136,9 +144,35 @@ def _ordinals(text: str) -> list[Hit]:
         if after.lower().startswith(MONTHS):
             hits.append(Hit("ordinal_date", m.start(), m.end(), "A day before the month takes no suffix", number))
             continue
+        head = _expected_head(number)
+        if suffix in ("ма", "мата") and number[-1] in "78" and _singular_next(after):
+            # `7-ма степен` (седма), `8-мата година`; `7-ма души` (седмина) is a count
+            ending = suffix[1:]
+            hits.append(
+                Hit(
+                    "ordinal_suffix",
+                    m.start(),
+                    m.end(),
+                    f"After {number} the ordinal takes one letter: {number}-{ending}",
+                    f"{number}-{ending}",
+                )
+            )
+            continue
         if suffix in NOT_ORDINAL or not ORDINAL_ENDING.fullmatch(suffix):
             continue
-        head = _expected_head(number)
+        if suffix in ("ят", "я") or suffix in (head + "ят", head + "я") and head:
+            # `14-ят` -> `14-ият`, `21-вят` -> `21-вият`: the article after the ordinal's и
+            right = f"{head}и{suffix[len(head) :] if head and suffix.startswith(head) else suffix}"
+            hits.append(
+                Hit(
+                    "ordinal_suffix",
+                    m.start(),
+                    m.end(),
+                    f"The ordinal's article: {number}-{right}",
+                    f"{number}-{right}",
+                )
+            )
+            continue
         if not head and suffix[0] not in VOWELS and len(suffix) > 1 and suffix[1] in VOWELS:
             hits.append(
                 Hit(

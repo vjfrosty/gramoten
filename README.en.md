@@ -20,7 +20,7 @@
 | **Works as** | Python library · command line tool · HTTP endpoint for a web page |
 | **Needs** | Python 3.11+ and one library, `marisa-trie` (wheels for Windows, macOS, Linux) |
 | **Speed** | about 12 ms for a 300-word e-mail; word lists load once in about 15 ms |
-| **Memory and size** | about 37 MB of RAM; the wheel is about 9 MB with every word list |
+| **Memory and size** | about 45 MB of RAM; the wheel is about 11 MB with every word list |
 | **Privacy** | runs in your process, offline; text never leaves the machine |
 | **Licence** | MIT code; MPL-1.1 and CC BY data (see [Licence](#licence)) |
 
@@ -134,7 +134,7 @@ gramoten is meant to be a quick, free Bulgarian spell checker that any app can b
 - **Quick.** A 300-word e-mail is checked in about 12 ms, and the word lists load once in about 15 ms. That is fast enough to check text as the user types, or to check every message a server sends.
 - **Free of cost.** The code is MIT and the word lists come from open sources (see [Licence](#licence)). There is no API key, no per-word fee, no account and no usage limit.
 - **Offline and private.** Everything runs in the same process, with no network calls and no language model. The text never leaves the machine, and results are the same on every run and every machine.
-- **Small.** The only dependency is `marisa-trie`. The wheel is about 9 MB with every word list, and a process with everything loaded takes about 37 MB of RAM.
+- **Small.** The only dependency is `marisa-trie`. The wheel is about 11 MB with every word list, and a process with everything loaded takes about 45 MB of RAM.
 - **Catches words written as they sound.** Many Bulgarian misspellings come from writing a word the way it is pronounced (`подтискам` for `потискам`, `до сега` for `досега`). The 386,241 known misspellings and gramoten's own corrections catch these and suggest the right form first. For any other unknown word, a phonetic search tries the changes that sound the same in Bulgarian (`а/ъ`, `о/у`, `е/и`, `д/т`, `з/с`, `я` as `йа`, a lost `т` in `чесно`) and ranks those words above other near words: `фучбол` → `футбол`, `здрафейти` → `здравейте`. On misspellings written by sound, the first suggestion is right 95% of the time, against 52% with letter edits alone.
 - **Safe.** It reports problems and proposes fixes. The app or the user decides what to apply, and spelling is never changed automatically.
 
@@ -148,7 +148,7 @@ pip install git+https://github.com/vjfrosty/gramoten   # straight from the repos
 pip install -e .                                      # from a checkout, for development
 ```
 
-Once it is on PyPI: `pip install gramoten` (or `uv add gramoten`). The wheel holds the word lists (about 9 MB); nothing is downloaded at run time.
+Once it is on PyPI: `pip install gramoten` (or `uv add gramoten`). The wheel holds the word lists (about 11 MB); nothing is downloaded at run time.
 
 ## Use it in an app
 
@@ -198,7 +198,7 @@ The exit codes make it usable in scripts, pre-commit hooks and CI. The full refe
 
 What is flagged is mostly rare words, dialect and slang (`абе`, `нема`), old spelling (`казватъ`), abbreviations with no full stop (`изм`, `авг`) and names at a sentence start. A name an app's texts use goes in that app's own word list (`--words FILE`), not in the package.
 
-Speed is about 0.17 M characters a second on news text, so a 300-word e-mail takes about 12 ms. A process with the package and every list loaded takes about 37 MB of RAM; loading the lists takes about 15 ms, once.
+Speed is about 0.17 M characters a second on news text, so a 300-word e-mail takes about 12 ms. A process with the package and every list loaded takes about 45 MB of RAM; loading the lists takes about 15 ms, once.
 
 ### Sound-alike search: words written as they are heard
 
@@ -254,7 +254,7 @@ No. It does not rewrite sentences. It finds what can be decided by rule, so the 
 
 | Folder | Holds |
 |---|---|
-| `src/gramoten/` | The package: code, its word lists (`data/`, 14 MB) and the full reference README. |
+| `src/gramoten/` | The package: code, its word lists (`data/`, 17 MB) and the full reference README. |
 | `tests/` | The tests, one file per area: spelling, format, punctuation, grammar, fonts and the API. |
 | `tools/` | The scripts that rebuild the word lists from their sources, and the sources' licences (`tools/bg_BG/SOURCE.md`). |
 | `assets/` | The logo and icons. |

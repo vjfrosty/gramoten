@@ -10,7 +10,7 @@ Use it when someone needs to check Bulgarian spelling, commas, grammar or typogr
 - Own words: pass `extra=frozenset({...})`, or `--words FILE` on the command line
 - CLI: `python -m gramoten FILE`, `--fix`, `--json`, `serve` (test page on port 8765); exit 1 when something is found
 - Spelling suggestions include a sound-alike search for words written as they are heard (`фучбол` → `футбол`): the right word comes first 95% of the time on such misspellings, against 52% with letter edits alone
-- Speed: about 12 ms for a 300-word e-mail; about 37 MB of RAM
+- Speed: about 12 ms for a 300-word e-mail; about 45 MB of RAM
 
 ## Docs
 

@@ -40,6 +40,9 @@ The downloads are about 4 GB and stay outside the repository.
 - `build_inflections.py`: other forms of the added words, made with the paradigms of
   the bgOffice dictionary (MPL-1.1), added to `modern_words.marisa`, checked against
   the Leipzig and MaCoCu-bg counts.
+- `build_word_starts.py`: every start of every form in `bg_forms.marisa` and
+  `modern_words.marisa`, for the suggestion search (MPL-1.1, like the dictionary).
+  Run it after either list is rebuilt.
 - `build_vocatives.py`: forms of address, from the dictionary and the same counts.
 - `build_eu_words.py`: EU legal words from 20 Bulgarian acts on EUR-Lex (© European
   Union, reuse under Commission Decision 2011/833/EU). The acts are not kept here.

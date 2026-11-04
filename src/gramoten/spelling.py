@@ -73,6 +73,12 @@ ABBREVIATIONS = frozenset(
 #: Units, accepted with or without a full stop: `5 км`, `10 кг`.
 UNITS = frozenset("км м см мм кг г мг л мл дка ха кв.м мб гб кб мвт квт вт".split())
 
+#: First parts of hyphenated compounds that are no word of their own:
+#: `австро-унгарски`, `англо-саксонски`, `франко-германски`, `гръко-римски`.
+COMBINING_FORMS = frozenset(
+    "австро англо франко германо гръко индо афро испано италиано българо славяно юдео греко".split()
+)
+
 #: All-capital words this short are acronyms (ДДС, ЕАД, УЕФА); they are not spelt.
 ACRONYM_MAX = 5
 
@@ -220,7 +226,11 @@ def is_correct(word: str, extra: frozenset[str] = frozenset()) -> bool:
     if _known(lower, extra):
         return True
     parts = lower.split("-")
-    return len(parts) > 1 and all(len(p) <= 1 or _known(p, extra) for p in parts)
+    return (
+        len(parts) > 1
+        and all(len(p) <= 1 or _known(p, extra) or p in COMBINING_FORMS for p in parts[:-1])
+        and (len(parts[-1]) <= 1 or _known(parts[-1], extra))
+    )
 
 
 def _edits(word: str, upto: int | None = None) -> set[str]:
@@ -255,7 +265,9 @@ def suggest(word: str, limit: int = 5, extra: frozenset[str] = frozenset(), deep
     """
     ranked = list(_ranked(word.lower(), extra, deep))
     correction = known_correction(word)
-    if correction and " " not in correction:
+    # A correction of two words comes only from gramoten's own list (`не може`); the
+    # misspelling table's corrections are single words.
+    if correction and (" " not in correction or word.lower() in _corrections()):
         ranked = [correction] + [w for w in ranked if w != correction]
     return [_shape(w, word) for w in ranked[:limit]]
 
@@ -265,6 +277,32 @@ def _prefixes(extra: frozenset[str]) -> marisa_trie.Trie:
     """The project words and added words as a trie, so their starts are a prefix search:
     the word lists that are not tries. A set of every start took 16 ms and 3 MB."""
     return marisa_trie.Trie(project_words() | extra)
+
+
+@lru_cache(maxsize=1)
+def _word_starts() -> marisa_trie.Trie:
+    """Every start of every form in `bg_forms.marisa` and `modern_words.marisa`
+    (`tools/build_word_starts.py`): whether a known word begins with some letters is one
+    exact lookup, 3 times as fast as a prefix search in each list."""
+    trie = marisa_trie.Trie()
+    trie.load(str(DATA / "word_starts.marisa"))
+    return trie
+
+
+def _starts_of(words: frozenset[str]) -> frozenset[str]:
+    return frozenset(w[:i] for w in words for i in range(1, len(w) + 1))
+
+
+@lru_cache(maxsize=1)
+def _project_starts() -> frozenset[str]:
+    """Every start of the project words, made once: the text lists are not in
+    `word_starts.marisa`, so a word added to them needs no rebuild."""
+    return _starts_of(project_words())
+
+
+@lru_cache(maxsize=64)
+def _added_starts(extra: frozenset[str]) -> frozenset[str]:
+    return _starts_of(extra)
 
 
 #: Suggestions already made, by (word, added words, deep), least recently used first.
@@ -300,8 +338,7 @@ def _search(lower: str, extra: frozenset[str], deep: bool) -> tuple[tuple[str, .
     whether the search finished within `SECOND_EDIT_STEPS`."""
     forms, project, forbidden = _forms(), project_words(), forbidden_words()
     modern = _modern()
-    tries = (forms, modern)
-    prefixes = _prefixes(extra)
+    starts, project_starts, added_starts = _word_starts(), _project_starts(), _added_starts(extra)
 
     corrections = _corrections()
 
@@ -313,7 +350,8 @@ def _search(lower: str, extra: frozenset[str], deep: bool) -> tuple[tuple[str, .
         return (w in modern or w in project) and w not in forbidden
 
     def opens(prefix: str) -> bool:
-        return any(next(t.iterkeys(prefix), None) is not None for t in (*tries, prefixes))
+        """Whether a known word begins with `prefix` (every word begins with "")."""
+        return not prefix or prefix in starts or prefix in project_starts or prefix in added_starts
 
     def reach(w: str) -> int:
         """The longest start of `w` some known word begins with. An edit after it cannot
@@ -394,29 +432,40 @@ def _within_two(word: str, opens, known, steps: float) -> tuple[set[str], bool]:
     starts: dict[str, bool] = {}
 
     def begins(prefix: str) -> bool:
-        if prefix not in starts:
-            starts[prefix] = opens(prefix)
-        return starts[prefix]
+        known_start = starts.get(prefix)
+        if known_start is None:
+            known_start = starts[prefix] = opens(prefix)
+        return known_start
 
+    n = len(word)
     stack = [(0, "", 2)]
+    push, pop = stack.append, stack.pop
     while stack:
         if len(starts) > steps:
             return found, False
-        state = stack.pop()
+        state = pop()
         if state in seen:
             continue
         seen.add(state)
         i, built, left = state
-        if i == len(word) and known(built):
+        if i < n:
+            here = word[i]
+            if begins(built + here):
+                push((i + 1, built + here, left))
+        elif known(built):
             found.add(built)
-        if i < len(word) and begins(built + word[i]):
-            stack.append((i + 1, built + word[i], left))
         if not left:
             continue
-        if i < len(word):
-            stack.append((i + 1, built, left - 1))  # delete
-            stack += [(i + 1, built + c, left - 1) for c in ALPHABET if c != word[i] and begins(built + c)]
-            if i + 1 < len(word) and word[i] != word[i + 1] and begins(built + word[i + 1] + word[i]):
-                stack.append((i + 2, built + word[i + 1] + word[i], left - 1))  # swap
-        stack += [(i, built + c, left - 1) for c in ALPHABET if begins(built + c)]  # insert
+        down = left - 1
+        # The letters some known word has after `built`: each serves a replace and an insert.
+        alive = [c for c in ALPHABET if begins(built + c)]
+        if i < n:
+            push((i + 1, built, down))  # delete
+            for c in alive:
+                if c != here:
+                    push((i + 1, built + c, down))  # replace
+            if i + 1 < n and here != word[i + 1] and begins(built + word[i + 1] + here):
+                push((i + 2, built + word[i + 1] + here, down))  # swap
+        for c in alive:
+            push((i, built + c, down))  # insert
     return found, True

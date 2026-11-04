@@ -96,7 +96,7 @@ def leipzig_counts(downloads: Path, name: str) -> tuple[collections.Counter, col
     lower: collections.Counter = collections.Counter()
     upper: collections.Counter = collections.Counter()
     with tarfile.open(downloads / f"{name}.tar.gz") as archive:
-        member = next(m for m in archive.getmembers() if m.name.endswith("-words.txt"))
+        member = next(m for m in archive if m.name.endswith("-words.txt"))  # stops there
         for raw in archive.extractfile(member):
             parts = raw.decode("utf-8", "replace").rstrip("\n").split("\t")
             if len(parts) < 3 or not parts[2].isdigit():

@@ -77,10 +77,20 @@ def _rules(text: str):
             "date_leading_zero", m.start(), m.start() + 2, "A day before the month has no leading zero", m.group(1)
         )
     # 1990г. -> 1990 г.: an abbreviation after a number is a word of its own
-    for m in re.finditer(r"(?<![\w.,])(\d{1,4})(г|в|хил|млн|млрд)\.(?=\s|$|[,;:)])", text):
+    # `20 000г.`: the end of a number with a thousands space is no year, so it is left.
+    for m in re.finditer(r"(?<![\w.,])(?<!\d[  ])(\d{1,4})(г|в|хил|млн|млрд)\.(?=\s|$|[,;:)–—-])", text):
         yield Hit(
             "abbreviation_space",
             m.start(),
+            m.end(),
+            "A space between the number and the abbreviation",
+            f"{m.group(1)} {m.group(2)}.",
+        )
+    # 31.12.2024г. -> 31.12.2024 г.: the year of a full date.
+    for m in re.finditer(r"(?<![\w.,])\d{1,2}\.\d{1,2}\.(\d{4})(г)\.(?=\s|$|[,;:)–—-])", text):
+        yield Hit(
+            "abbreviation_space",
+            m.start(1),
             m.end(),
             "A space between the number and the abbreviation",
             f"{m.group(1)} {m.group(2)}.",

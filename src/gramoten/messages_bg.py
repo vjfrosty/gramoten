@@ -63,6 +63,7 @@ _TABLE: list[tuple[str, str]] = [
     ("A day before the month takes no suffix", "Датата пред името на месеца се пише без окончание"),
     ("After {} the ordinal takes one letter: {}", "Редното числително след {0} е с една буква: {1}"),
     ("After {} the ordinal takes „{}“: {}", "Редното числително след {0} е с „{1}“: {2}"),
+    ("The ordinal's article: {}", "Членът на редното числително е с „и“: {0}"),
     ("A Roman numeral takes no suffix", "Римската цифра се пише без окончание"),
     ("A number and this adjective are joined by a hyphen", "Числото и прилагателното се свързват с дефис"),
     ("Written as one word", "Пише се слято"),

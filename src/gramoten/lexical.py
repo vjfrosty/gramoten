@@ -8,7 +8,7 @@ Every word here is spelt right, and still wrong in its place: `на сайтът
 | `article_after_preposition` | after a preposition a masculine word takes the short article: `от сумарният` → `от сумарния` (ОПР 2012, т. 17.6) |
 | `v_vav`, `s_sas` | `във` before в/ф, `със` before с/з, and only there: `с запазени` → `със запазени` |
 | `repeated_word` | a function word twice: `и и`, `на на` (`си си` is right) |
-| `written_together` | `до сега` → `досега`, `в къщи` → `вкъщи`, `в предвид` → `предвид` |
+| `written_together` | `до сега` → `досега`, `в къщи` → `вкъщи`, `в предвид` → `предвид`, `тъмно зелен` → `тъмнозелен` |
 | `superlative_hyphen` | `най много` → `най-много` |
 | `number_range` | `10-12 юли` → `10–12 юли` |
 
@@ -215,7 +215,19 @@ TOGETHER = [
     ("на горе", "нагоре"),
     ("на долу", "надолу"),
     ("до кога", "докога"),
+    ("до когато", "докогато"),
+    ("до тук", "дотук"),
+    ("до там", "дотам"),
+    ("до преди", "допреди"),
+    ("до къде", "докъде"),
+    ("до където", "докъдето"),
+    ("до някъде", "донякъде"),
+    ("до колко", "доколко"),
+    ("до колкото", "доколкото"),
+    ("от тук", "оттук"),
+    ("от там", "оттам"),
     ("от кога", "откога"),
+    ("по настоящем", "понастоящем"),
     ("на вред", "навред"),
     ("по-вече", "повече"),
     ("по-не", "поне"),
@@ -233,6 +245,59 @@ _TOGETHER = re.compile(
 _TOGETHER_BY = {wrong: right for wrong, right in TOGETHER}
 
 
+#: An adverb and an adjective written as one word (ОПР): a shade of a colour
+#: (`тъмнозелен`, `светлокафяв`, `бледорозов`), `научноизследователски`,
+#: `световноизвестен`. Flagged only when the joined word is in the dictionary and the
+#: second word can only be an adjective. A hyphen is joined too, except where it is
+#: right: `научно-технически` (two equal parts).
+_JOINED_ADJECTIVE = re.compile(
+    B
+    + r"((?:[Тт]ъмно|[Сс]ветло|[Бб]ледо|[Яя]рко)(?: +|-)([а-я]+)"
+    + r"|[Нн]аучно(?: +|-)(изследователск[а-я]*)"
+    + r"|[Сс]ветовно +(известн[а-я]*))"
+    + E
+)
+
+
+def _joined_adjectives(text: str) -> list[Hit]:
+    hits = []
+    for m in _JOINED_ADJECTIVE.finditer(text):
+        first = re.match(r"[А-Яа-я]+", m.group(1)).group(0)  # type: ignore[union-attr]
+        second = m.group(2) or m.group(3) or m.group(4)
+        joined = first + second
+        readings = morphology.analyse(second)
+        if not readings or not all(r.tag["pos"] == "A" for r in readings):
+            continue
+        if not spelling.is_correct(joined):
+            continue
+        hits.append(Hit("written_together", m.start(), m.end(), f"Written together: „{joined}“", joined))
+    return hits
+
+
+#: Words after `доколко` that cannot be what `колко` counts: verbs' little helpers,
+#: short pronouns and particles (`Доколко е важно`, `доколкото ми е известно`).
+_AFTER_DOKOLKO = frozenset(
+    "е са съм си сме сте бил била било били би ще да се ли не ми ти му ѝ й им ни ви го я ги".split()
+)
+#: Verb forms that are also a counted plural the dictionary lists only as a verb.
+_COUNTED_VERB_FORMS = frozenset({"души"})
+
+
+def _not_counted(after: str) -> bool:
+    """Whether `колко` before `after` means "to what extent": the next word is a
+    punctuation mark or the end, a small helper word, or a verb with no noun or
+    adjective reading. A noun, adjective, number or unknown word may be counted
+    (`до колко часа`, `до колко души`), so the words stay apart."""
+    m = re.match(r"\s*(\w+)", after)
+    if not m:
+        return True
+    word = m.group(1).lower()
+    if word in _AFTER_DOKOLKO:
+        return True
+    readings = morphology.analyse(word)
+    return bool(readings) and all(r.tag["pos"] == "V" for r in readings) and word not in _COUNTED_VERB_FORMS
+
+
 def _together(text: str) -> list[Hit]:
     hits = []
     for m in _TOGETHER.finditer(text):
@@ -248,6 +313,8 @@ def _together(text: str) -> list[Hit]:
             continue
         if wrong in ("в ляво", "в дясно", "на ляво", "на дясно") and re.match(r" \w+(та|то|те|ия|ият)\b", after):
             continue
+        if wrong in ("до колко", "до колкото") and not _not_counted(after):
+            continue  # `до колко часа`: колко counts a noun, so it stays apart
         hits.append(
             Hit("written_together", m.start(), m.end(), f"Written together: „{right}“", _case(right, m.group(0)))
         )
@@ -292,7 +359,7 @@ def _range(text: str) -> list[Hit]:
     return hits
 
 
-DETECTORS = (_article_after_preposition, _v_s, _superlative, _together, _repeated, _range)
+DETECTORS = (_article_after_preposition, _v_s, _superlative, _together, _joined_adjectives, _repeated, _range)
 
 
 def check(text: str) -> list[Hit]:

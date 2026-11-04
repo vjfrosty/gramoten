@@ -146,6 +146,12 @@ def _attributive(text: str, tokens: list[Token], i: int) -> bool:
 # -- the double article -------------------------------------------------------
 
 
+#: Base forms the morphology reads as having the full article, because the dictionary
+#: gives the word no other singular: `кръстопът` (its article form is `кръстопътят`).
+#: Of all lemmas only this one and `светът` have that shape, and `светът` is articled.
+UNARTICLED_BASES = frozenset({"кръстопът"})
+
+
 def _double_article(text: str, tokens: list[Token]) -> list[Hit]:
     hits = []
     for (w1, s1, e1), (w2, s2, e2) in zip(tokens, tokens[1:], strict=False):
@@ -153,6 +159,8 @@ def _double_article(text: str, tokens: list[Token]) -> list[Hit]:
             continue
         if w1.lower() in ("противното", "другото"):
             continue  # `до доказване на противното`, `наред с другото`: nominalised
+        if w2.lower() in UNARTICLED_BASES:
+            continue  # `международния кръстопът`: a base form the dictionary tags as articled
         first = _readings(w1)
         is_noun, second = _all_nouns(_readings(w2))
         if not (_all_modifiers(first) and is_noun):
@@ -285,6 +293,12 @@ def _person(reading) -> bool:
     return base.endswith(PERSON_SUFFIX)
 
 
+#: The count form by the plural written, where the dictionary joins two nouns in one
+#: entry: `път` (road) has the plural `пътища` and the count form `пътя`; its `пъти`
+#: is the count form of `път` (time): `три пъти`. So `12 063 третокласни пътя`.
+COUNT_OF_PLURAL = {"пътища": ["пътя"]}
+
+
 def _count_after(text: str, end: int, following: list[Token]) -> list[Hit]:
     previous = end
     for word, start, stop in following:
@@ -301,7 +315,9 @@ def _count_after(text: str, end: int, following: list[Token]) -> list[Hit]:
             return []
         if any(_person(r) for r in nouns):
             return []
-        counts = sorted({f for r in nouns for f in morphology.inflect(r.lemma, n="c")})
+        counts = COUNT_OF_PLURAL.get(word.lower()) or sorted(
+            {f for r in nouns for f in morphology.inflect(r.lemma, n="c")}
+        )
         if not counts or word.lower() in counts:
             return []
         return [
