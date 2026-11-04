@@ -1,0 +1,25 @@
+# gramoten (Грамотен)
+
+> Offline Bulgarian spell checker, grammar checker and punctuation checker for Python. Rule-based, with no language model, no API and no network. It checks any Bulgarian (Cyrillic) text, returns findings with exact offsets and proposes fixes; it never changes spelling automatically. MIT code; MPL-1.1 and CC BY word lists.
+
+Use it when someone needs to check Bulgarian spelling, commas, grammar or typography in Python, from the command line, or behind a web editor over HTTP.
+
+- Install: `pip install git+https://github.com/vjfrosty/gramoten` (Python 3.11+, one dependency: `marisa-trie`)
+- Check: `gramoten.check(text)` returns a list of `Issue` (`kind`, `code`, `start`, `end`, `text`, `fix`, `suggestions`, `message`, `message_bg`)
+- Fix: `gramoten.fix_text(text)` applies every certain fix; `gramoten.apply_fixes(text, issues)` applies chosen ones
+- Own words: pass `extra=frozenset({...})`, or `--words FILE` on the command line
+- CLI: `python -m gramoten FILE`, `--fix`, `--json`, `serve` (test page on port 8765); exit 1 when something is found
+- Spelling suggestions include a sound-alike search for words written as they are heard (`фучбол` → `футбол`): the right word comes first 95% of the time on such misspellings, against 52% with letter edits alone
+- Speed: about 12 ms for a 300-word e-mail; about 37 MB of RAM
+
+## Docs
+
+- [README (English)](https://github.com/vjfrosty/gramoten/blob/main/README.en.md): what it checks with examples, install, FAQ, licence
+- [README (Bulgarian)](https://github.com/vjfrosty/gramoten/blob/main/README.md): the same in Bulgarian
+- [Full reference](https://github.com/vjfrosty/gramoten/blob/main/src/gramoten/README.md): every rule and its fix, the `Issue` fields, command-line options, how spelling suggestions work, fonts, added words
+- [Integrating](https://github.com/vjfrosty/gramoten/blob/main/src/gramoten/README.md#integrating): web endpoint, JSON shape, JavaScript offsets, threads, speed
+
+## Optional
+
+- [Changelog](https://github.com/vjfrosty/gramoten/blob/main/CHANGELOG.md)
+- [Data sources and licences](https://github.com/vjfrosty/gramoten/blob/main/NOTICE)

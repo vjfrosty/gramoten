@@ -137,6 +137,21 @@ class ModernWordsAndRobustText(unittest.TestCase):
         self.assertEqual((issue.start, issue.end), (0, 12))
         self.assertIn("консултант", issue.suggestions)
 
+    def test_words_written_as_they_sound_get_the_right_word_first(self) -> None:
+        # None of these is in a misspelling list: the sound-alike search finds them.
+        cases = {
+            "фучбол": "футбол",
+            "градинъта": "градината",
+            "здрафейти": "здравейте",
+            "телефуна": "телефона",
+            "юнушескъ": "юношеска",
+            "млекуту": "млякото",
+        }
+        for wrong, right in cases.items():
+            with self.subTest(wrong=wrong):
+                self.assertIsNone(spelling.known_correction(wrong))
+                self.assertEqual(spelling.suggest(wrong)[0], right)
+
     def test_suggestions_rank_by_general_bulgarian(self) -> None:
         self.assertEqual(spelling.suggest("тлефон")[0], "телефон")
 

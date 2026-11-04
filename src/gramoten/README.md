@@ -30,7 +30,7 @@ The hyphen used as a dash (` - `) is found once the double space before it is fi
 | `kind` | `spelling` (show red); `punctuation`, `grammar` or `format` (show blue). |
 | `start`, `end`, `text` | `text == input[start:end]`; offsets are Python string indices. |
 | `fix` | What replaces `text` on "Fix", or `None`. **Spelling never has one.** |
-| `suggestions` | For spelling, up to five known words, most used first. Otherwise the fix. |
+| `suggestions` | For spelling, up to five known words, closest first (sound-alike changes count as half an edit), common words before rare ones. Otherwise the fix. |
 | `message` | One English sentence for the writer. |
 | `message_bg` | The same sentence in Bulgarian (`messages_bg.py`). |
 | `quiet` | Right, but too frequent to underline. Count it and let "Fix all" apply it. |
@@ -140,14 +140,19 @@ Details and rebuild: `tools/morphology/SOURCE.md`.
 The dictionary is bgOffice's `bg_BG`, in the copy under GPL/LGPL/MPL that gramoten takes under MPL-1.1 (`tools/bg_BG/SOURCE.md`). Its affix rules are expanded once, at build time, into every word form, and stored in a 2 MB trie: `data/bg_forms.marisa`, holding 866,654 lowercased forms.
 
 - **Checking a word:** look it up in the trie.
-- **Suggesting:** generate every one-edit change of the word, keep the ones in the trie, and rank them by how often news and Wikipedia use them (`data/bg_frequency.marisa`, Leipzig counts). When fewer than 5 words are one edit away, words two edits away follow them. The two-edit search walks the word lists letter by letter and drops a branch as soon as no known word begins with the letters so far: it finds every word two edits away in 15–30 ms, the same ones every time.
+- **Suggesting:** three searches, then one ranking.
+  - **One edit:** every one-edit change of the word (a letter added, dropped, replaced, or two swapped) that is in the trie. Cost 1.
+  - **Sound-alike:** every known word the word becomes by changes that sound the same or nearly so in Bulgarian (`SOUND_ALIKE`): reduced unstressed vowels (`а/ъ`, `о/у`, `е/и`), `я/е`, voiced and voiceless consonants (`б/п`, `в/ф`, `г/к`, `д/т`, `ж/ш`, `з/с`), `я`, `ю` and `щ` spelt by sound (`йа`, `йу`, `шт`), `ия` heard as `еъ`, a lost `т`/`д` (`чесно`), and a doubled or undoubled letter. Each change costs 0.5 (`SOUND_COST`), so `хъръктеристикъ` reaches `характеристика` and `фучбол` reaches `футбол` first. It walks the word lists letter by letter, so it takes well under a millisecond.
+  - **Two edits:** when fewer than 5 words cost 1 or less. It walks the word lists letter by letter and drops a branch as soon as no known word begins with the letters so far: it finds every word two edits away in 15–30 ms, the same ones every time. Cost 2.
+  - **Ranking:** cost minus 0.3 × log10 of how often news and Wikipedia use the word (`FREQUENCY_WEIGHT`, `data/bg_frequency.marisa`, Leipzig counts), so a common word can come before a slightly closer rare one. A known misspelling's correction always comes first.
 
 | Measure (Windows dev box) | Result |
 |---|---|
 | RAM | about 37 MB for the whole process, every list loaded |
 | A paragraph | 0.14 ms typical, 3 ms p95 |
-| Suggestion quality (600 one-edit typos of common words) | right word in the top 5 100% |
-| Suggestion quality (600 two-edit typos of common words) | right word first 65%, in the top 5 88% |
+| Suggestion quality (3,000 Chitanka misspellings, their listed correction hidden, half not used to set the weights) | right word first 95%, in the top 5 99% (letter edits alone: 52% and 68%) |
+| Suggestion quality (600 random one-edit typos of common words) | right word first 87%, in the top 5 100% |
+| Suggestion quality (600 random two-edit typos of common words) | right word first 65%, in the top 5 88% |
 
 Hunspell engines were measured and rejected:
 - **spylls:** up to 94 s for one suggestion.

@@ -10,7 +10,11 @@ First release.
 
 - Spelling against the bgOffice dictionary (866,654 forms), with modern words,
   their inflected forms, forms of address, telecom and EU legal terms, names and
-  settlement names; suggestions ranked by word frequency.
+  settlement names.
+- Suggestions by letter edits and by sound: changes that sound alike in
+  Bulgarian (reduced vowels, voiced and voiceless consonants, `я`/`йа`, a lost
+  `т`) count as half an edit, then word frequency ranks them.
+  Words written by sound get the right word first 95% of the time.
 - Format, punctuation, wording and grammar rules, each with a certain fix where
   one exists (`apply_fixes`, `fix_text`).
 - Mixed Latin and Cyrillic letters inside a word.

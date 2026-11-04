@@ -12,6 +12,7 @@ Advice only: nothing here changes text or stops an export.
 
 from __future__ import annotations
 
+import math
 import threading
 from collections import OrderedDict
 from functools import lru_cache
@@ -28,6 +29,38 @@ FILL_TO = 5
 #: 10,000-16,000 (15-30 ms). A count, not a time, so the result never depends on
 #: how fast the machine is.
 SECOND_EDIT_STEPS = 100_000
+
+#: Spellings that sound alike, or nearly, in Bulgarian, each way round: reduced
+#: unstressed vowels (`а/ъ`, `о/у`, `е/и`), the `я/е` alternation, voiced and voiceless
+#: consonants (`д/т`, `з/с`), `я`, `ю` and `щ` spelt out by sound (`йа`, `йу`, `шт`),
+#: `ия` heard as `еъ`, and a `т` or `д` lost between consonants (`честно` as `чесно`).
+SOUND_ALIKE = (
+    ("а", "ъ"), ("о", "у"), ("е", "и"), ("е", "я"), ("я", "ъ"), ("я", "а"), ("ю", "у"),
+    ("б", "п"), ("в", "ф"), ("г", "к"), ("д", "т"), ("ж", "ш"), ("з", "с"), ("и", "й"),
+    ("я", "йа"), ("я", "йъ"), ("ю", "йу"), ("щ", "шт"), ("ьо", "йо"),
+    ("ия", "еъ"), ("ия", "иъ"), ("ия", "ийъ"), ("ия", "еа"),
+    ("стн", "сн"), ("здн", "зн"), ("ст", "с"),
+)  # fmt: skip
+#: What a sound-alike spelling becomes, by what is written: the pairs above both ways,
+#: and every letter doubled or undoubled (`мисъл`/`ммисъл`, `оттам`/`отам`).
+_SOUND_REWRITES: dict[str, tuple[str, ...]] = {}
+for _a, _b in SOUND_ALIKE:
+    _SOUND_REWRITES[_a] = (*_SOUND_REWRITES.get(_a, ()), _b)
+    _SOUND_REWRITES[_b] = (*_SOUND_REWRITES.get(_b, ()), _a)
+for _c in ALPHABET:
+    _SOUND_REWRITES[_c + _c] = (*_SOUND_REWRITES.get(_c + _c, ()), _c)
+    _SOUND_REWRITES[_c] = (*_SOUND_REWRITES.get(_c, ()), _c + _c)
+_SOUND_LONGEST = max(map(len, _SOUND_REWRITES))
+#: At most this many sound-alike changes in one word.
+SOUND_CHANGES_MAX = 8
+
+#: A sound-alike change costs this much of an ordinary edit (a letter added, dropped,
+#: replaced or two swapped). A suggestion's cost is its edits plus its sound changes.
+SOUND_COST = 0.5
+#: Ranking: cost minus this times log10 of how often the word is used, so a common word
+#: may come before a closer rare one. Both weights were set on half of the Chitanka
+#: misspellings and on random typos of common words (`tools/dl/eval/scripts/phonetic.py`).
+FREQUENCY_WEIGHT = 0.3
 
 #: Standard abbreviations (ОПР 2012), accepted when a full stop follows: `ул.`,
 #: `проф.`, `св.`, `стр.`.
@@ -211,8 +244,10 @@ def _shape(suggestion: str, like: str) -> str:
 
 
 def suggest(word: str, limit: int = 5, extra: frozenset[str] = frozenset(), deep: bool = True) -> list[str]:
-    """Known words one edit away, most used first; when fewer than `FILL_TO` and
-    `deep`, words two edits away follow, most used first.
+    """Known words one edit away or spelt the way `word` sounds; when fewer than
+    `FILL_TO` cost one edit or less and `deep`, words two edits away too. Ranked by
+    cost (`SOUND_COST` a sound-alike change) and how often each word is used
+    (`FREQUENCY_WEIGHT`).
 
     `deep` lets a host limit how many words of a text get the two-edit search
     (`gramoten.DEEP_SUGGESTIONS_PER_CALL`): one-edit suggestions, which cover most
@@ -292,15 +327,59 @@ def _search(lower: str, extra: frozenset[str], deep: bool) -> tuple[tuple[str, .
                 high = middle - 1
         return low
 
-    def by_use(words: set[str]) -> list[str]:
-        return sorted(words, key=lambda w: (-_count(w), w))
+    cost = {w: 1.0 for w in _edits(lower, reach(lower)) if known(w)}
+    sounds, finished = _sound_alikes(lower, opens, known, SECOND_EDIT_STEPS)
+    for w, changes in sounds.items():
+        cost[w] = min(cost.get(w, math.inf), SOUND_COST * changes)
+    cost.pop(lower, None)
+    if deep and sum(c <= 1 for c in cost.values()) < FILL_TO:
+        # Fewer than FILL_TO words within one edit: words two edits away join them.
+        two, finished = _within_two(lower, opens, known, SECOND_EDIT_STEPS)
+        for w in two - {lower}:
+            cost.setdefault(w, 2.0)
 
-    found = {w for w in _edits(lower, reach(lower)) if known(w)}
-    if not deep or len(found) >= FILL_TO:
-        return tuple(by_use(found)), True
-    # Fewer than FILL_TO words one edit away: words two edits away follow them.
-    two, finished = _within_two(lower, opens, known, SECOND_EDIT_STEPS)
-    return tuple(by_use(found) + by_use(two - found - {lower})), finished
+    def rank(w: str) -> tuple[float, int, str]:
+        used = _count(w)
+        return cost[w] - FREQUENCY_WEIGHT * math.log10(used + 1), -used, w
+
+    return tuple(sorted(cost, key=rank)), finished
+
+
+def _sound_alikes(word: str, opens, known, steps: float) -> tuple[dict[str, int], bool]:
+    """Every known word `word` becomes by sound-alike changes only (`_SOUND_REWRITES`),
+    with the fewest changes each needs, and whether the search finished within `steps`
+    lookups. It walks the word lists like `_within_two`, so a change is tried only where
+    a known word begins with the letters built so far."""
+    found: dict[str, int] = {}
+    fewest: dict[tuple[int, str], int] = {}
+    starts: dict[str, bool] = {}
+
+    def begins(prefix: str) -> bool:
+        if prefix not in starts:
+            starts[prefix] = opens(prefix)
+        return starts[prefix]
+
+    stack = [(0, "", 0)]
+    while stack:
+        if len(starts) > steps:
+            return found, False
+        i, built, changes = stack.pop()
+        if fewest.get((i, built), SOUND_CHANGES_MAX + 1) <= changes:
+            continue
+        fewest[i, built] = changes
+        if i == len(word):
+            if changes and known(built) and changes < found.get(built, SOUND_CHANGES_MAX + 1):
+                found[built] = changes
+            continue
+        if begins(built + word[i]):
+            stack.append((i + 1, built + word[i], changes))
+        if changes == SOUND_CHANGES_MAX:
+            continue
+        for n in range(1, min(_SOUND_LONGEST, len(word) - i) + 1):
+            for written in _SOUND_REWRITES.get(word[i : i + n], ()):
+                if begins(built + written):
+                    stack.append((i + n, built + written, changes + 1))
+    return found, True
 
 
 def _within_two(word: str, opens, known, steps: float) -> tuple[set[str], bool]:

@@ -10,7 +10,10 @@ requires-python = ">=3.11"
 dependencies = [
     "marisa-trie>=1.2",
 ]
-keywords = ["bulgarian", "spellcheck", "grammar", "punctuation", "proofreading"]
+keywords = [
+    "bulgarian", "spellcheck", "spell-checker", "grammar", "grammar-checker", "punctuation",
+    "proofreading", "typography", "cyrillic", "nlp", "offline", "правопис", "граматика", "коректор",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -58,6 +61,8 @@ only-include = [
     "LICENSE",
     "NOTICE",
     "README.md",
+    "README.en.md",
+    "llms.txt",
     "CHANGELOG.md",
     "pyproject.toml",
 ]
