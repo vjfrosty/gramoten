@@ -1,0 +1,6 @@
+{
+  "steps": [
+    { "step": "login", "username": "admin" },
+    { "step": "activatePlugin", "pluginPath": "gramoten/gramoten.php" }
+  ]
+}

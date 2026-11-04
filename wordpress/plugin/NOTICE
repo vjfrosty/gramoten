@@ -1,0 +1,44 @@
+Грамотен for WordPress: Copyright (c) 2026 Yasen Ivanov.
+This plugin as a whole is under the GNU General Public License, version 3 or later (LICENSE).
+Its own code is also available under the MIT licence: https://github.com/vjfrosty/gramoten
+
+It includes data and code from the following third-party sources, under their own licences.
+
+bgOffice Bulgarian dictionary, Copyright (C) 2001-2010 Radostin Radnev. The dictionary is
+offered under GPL-2.0-or-later, LGPL-2.1-or-later or MPL-1.1, at the user's choice; this
+plugin takes it under GPL-2.0-or-later. Derived from it: data/bg_forms.marisa, bg_morph*,
+vocative_words.txt, telecom_words.txt, and the inflected forms in modern_words.marisa.
+Source: tools/bg_BG/ in the repository above.
+
+Chitanka misspelling table (data/misspellings.marisa), MIT:
+
+  Copyright (c) 2013 Authors of Chitanka
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+Leipzig Corpora Collection (https://wortschatz.uni-leipzig.de), CC BY:
+word counts in modern_words.marisa, names.marisa and bg_frequency.marisa.
+  © 2025 Universität Leipzig / Sächsische Akademie der Wissenschaften / InfAI
+
+EUR-Lex (https://eur-lex.europa.eu), © European Union, reused under Commission
+Decision 2011/833/EU: words in eu_words.txt.
+
+marisa-trie-wasm (build/), Copyright (c) Patrick Gaskin, MIT; it contains MARISA,
+Copyright (c) Susumu Yata, BSD-2-Clause or LGPL-2.1-or-later.
+Source: https://github.com/pgaskin/marisa.js

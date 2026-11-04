@@ -1,0 +1,7 @@
+{
+  "preferredVersions": { "wp": "6.6", "php": "7.4" },
+  "steps": [
+    { "step": "login", "username": "admin" },
+    { "step": "activatePlugin", "pluginPath": "gramoten/gramoten.php" }
+  ]
+}

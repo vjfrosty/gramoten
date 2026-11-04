@@ -1,0 +1,65 @@
+/* The sidebar. The underlines are in content.css, which also loads inside the editor's iframe. */
+.gramoten-summary {
+  margin-top: 0;
+}
+
+.gramoten-toggle {
+  margin-top: 16px;
+}
+
+.gramoten-finding {
+  padding-block: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.gramoten-finding:last-child {
+  border-bottom: 0;
+}
+
+.gramoten-finding__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.gramoten-finding__where {
+  color: #757575;
+  font-size: 11px;
+}
+
+.gramoten-mark {
+  padding-inline: 2px;
+  background: none;
+  color: inherit;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-decoration: underline wavy;
+  text-underline-offset: 3px;
+}
+
+.gramoten-mark--spelling {
+  text-decoration-color: #cc1818;
+}
+
+.gramoten-mark--other {
+  text-decoration-color: #3858e9;
+}
+
+.gramoten-finding__message {
+  margin: 4px 0 8px;
+  color: #1e1e1e;
+}
+
+.gramoten-finding__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

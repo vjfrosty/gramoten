@@ -1,0 +1,24 @@
+{
+  "name": "gramoten-wordpress",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "gramoten for the WordPress block editor: the checker in TypeScript, running in the browser.",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-reporter=spec tests/*.test.ts"
+  },
+  "dependencies": {
+    "marisa-trie-wasm": "0.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0"
+  }
+}

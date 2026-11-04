@@ -1,0 +1,12 @@
+{
+  "name": "gramoten-wordpress-e2e",
+  "private": true,
+  "type": "module",
+  "description": "The plugin in real WordPress and real browsers.",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "@wp-playground/cli": "3.1.62",
+    "playwright-core": "1.64.1",
+    "selenium-webdriver": "4.34.0"
+  }
+}

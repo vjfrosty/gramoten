@@ -242,6 +242,8 @@ Who may add is the host's decision.
 
 ## Integrating
 
+For WordPress there is a ready plugin in the repository's `wordpress/` folder: a TypeScript port that runs in the browser, so it needs none of the steps below.
+
 **1. Install** the package (repository README, "Install") and add `gramoten` to the app's dependencies. Nothing else is needed: no model, no network, no service.
 
 **2. Load the lists once, at start.** The first check loads every word list (about 15 ms; the process then takes about 45 MB). Call it when the app starts, so no user waits for it:

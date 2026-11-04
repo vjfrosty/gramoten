@@ -6,6 +6,11 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+- A WordPress plugin (`wordpress/`): the checker as a TypeScript port running in the
+  browser, with a block editor sidebar and underlines. A test in CI compares its findings
+  and fixes with the Python package's on every run. Another CI job drives the plugin in
+  real WordPress with Chrome, Firefox, WebKit and Safari.
+- Screenshots in the READMEs: the command line, the test page and the WordPress editor.
 - Written together: `дотук`, `дотам`, `допреди`, `докъде`, `докъдето`,
   `донякъде`, `докогато`, `оттук`, `оттам`, and `доколко`/`доколкото` when
   `колко` does not count a noun (`до колко часа` stays apart); `понастоящем`;

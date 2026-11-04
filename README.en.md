@@ -11,13 +11,13 @@
 
 # gramoten: Bulgarian spell checker and grammar checker for Python
 
-**gramoten** (Грамотен, "literate") is an offline **Bulgarian spell checker**, **grammar checker** and **punctuation checker** for Python. It checks any Bulgarian (Cyrillic) text by rule, with no language model, no API and no network. It finds spelling mistakes, missing commas, grammar errors and typography problems, and proposes fixes; it never changes the text by itself. Use it as a Python library, from the command line, or as a small HTTP service behind a web editor.
+**gramoten** (Грамотен, "literate") is an offline **Bulgarian spell checker**, **grammar checker** and **punctuation checker** for Python. It checks any Bulgarian (Cyrillic) text by rule, with no language model, no API and no network. It finds spelling mistakes, missing commas, grammar errors and typography problems, and proposes fixes; it never changes the text by itself. Use it as a Python library, from the command line, as a small HTTP service behind a web editor, or as a WordPress plugin.
 
 | | |
 |---|---|
 | **Checks** | spelling, punctuation (commas), grammar, orthography, typography and format, mixed Latin/Cyrillic, fonts in e-mail HTML |
 | **Language** | Bulgarian (български език) |
-| **Works as** | Python library · command line tool · HTTP endpoint for a web page |
+| **Works as** | Python library · command line tool · HTTP endpoint for a web page · [WordPress plugin](#wordpress-plugin) |
 | **Needs** | Python 3.11+ and one library, `marisa-trie` (wheels for Windows, macOS, Linux) |
 | **Speed** | about 12 ms for a 300-word e-mail; word lists load once in about 15 ms |
 | **Memory and size** | about 45 MB of RAM; the wheel is about 11 MB with every word list |
@@ -27,11 +27,13 @@
 ## Contents
 
 - [Quick start](#quick-start)
+- [See it working](#see-it-working)
 - [What it checks, with examples](#what-it-checks-with-examples)
 - [Why gramoten](#why-gramoten)
 - [Install](#install)
 - [Use it in an app](#use-it-in-an-app)
 - [Command line](#command-line)
+- [WordPress plugin](#wordpress-plugin)
 - [Word lists and accuracy](#word-lists-and-accuracy)
   - [Sound-alike search](#sound-alike-search-words-written-as-they-are-heard)
 - [FAQ](#faq)
@@ -55,6 +57,20 @@ gramoten.fix_text("Знаем че до сега.")   # 'Знаем, че дос
 ```
 
 `check()` returns a list of findings (`Issue`), each with exact offsets, the rule, a message in English and Bulgarian and, where the correction is certain, the fix. `fix_text()` applies every certain fix; spelling is never changed automatically.
+
+## See it working
+
+**Command line.** `python -m gramoten text.txt` lists the findings by line and column, and `--fix` returns the corrected text. Spelling stays with a person: `напсиано` is flagged but not changed.
+
+<img src="https://raw.githubusercontent.com/vjfrosty/gramoten/main/assets/screenshots/python-cli.png" alt="gramoten's findings in a terminal, and the corrected text from --fix" width="800">
+
+**Test page.** `python -m gramoten serve` opens a page on http://localhost:8765 that shows every finding with its kind, rule, message and suggestions.
+
+<img src="https://raw.githubusercontent.com/vjfrosty/gramoten/main/assets/screenshots/python-page.png" alt="gramoten's test page: underlined text and a table of findings" width="800">
+
+**WordPress.** The plugin underlines mistakes in the editor, and its sidebar explains them and offers suggestions.
+
+<img src="https://raw.githubusercontent.com/vjfrosty/gramoten/main/wordpress/assets/screenshot-1.png" alt="The WordPress block editor with underlined mistakes and the gramoten sidebar" width="800">
 
 ## What it checks, with examples
 
@@ -179,6 +195,22 @@ python -m gramoten serve             # a test page on http://localhost:8765
 
 The exit codes make it usable in scripts, pre-commit hooks and CI. The full reference (every rule, its fix, how it was measured) is [`src/gramoten/README.md`](src/gramoten/README.md), in the source and in the installed package (`gramoten/README.md`).
 
+## WordPress plugin
+
+The [`wordpress/`](wordpress/) folder holds a plugin for the block editor. The checker is ported to TypeScript and runs in the writer's browser: no server, no external service, and the text never leaves the browser. A test in CI compares its findings and fixes with the Python package's.
+
+- **What it checks:** the title and the text in blocks, including tables, quotes, columns and image captions, and the text in Custom HTML, Classic and Shortcode blocks (not their tags and attributes). Code blocks are not checked.
+- **What it does:** underlines mistakes, offers fixes, applies all certain fixes at once (with undo), and keeps a personal dictionary in each user's profile.
+- **Needs:** WordPress 6.6 or later, PHP 7.4 or later and a recent browser. It works in the block editor only.
+
+The plugin is not in the WordPress.org directory yet. [`wordpress/README.md`](wordpress/README.md) describes how to build and install it. The zip is about 9.3 MB because the word lists are inside it; if a host refuses a file that size, [`readme.txt`](wordpress/plugin/readme.txt) lists ways to install it without an upload.
+
+**Known limits:**
+
+- Custom HTML, Classic and Shortcode blocks show their findings in the sidebar only, without underlines.
+- Since WordPress 7.1, changing a Custom HTML block from outside it breaks undo, with or without the plugin. So there the finding is listed and the correction is made in the block itself.
+- „Поправи сигурните“ sometimes needs a second press: the first can lead to a new minor fix, such as a non-breaking space in `10,50 евро`.
+
 ## Word lists and accuracy
 
 **Word lists:**
@@ -244,6 +276,9 @@ Yes, over HTTP. Run a small endpoint (see [Use it in an app](#use-it-in-an-app))
 **How do I stop it flagging my product names and brands?**
 Pass your own words as `extra` in Python, or `--words FILE` / `--extra WORDS` on the command line.
 
+**Is there a WordPress plugin?**
+Yes, for the block editor, in the [`wordpress/`](wordpress/) folder. It runs entirely in the browser. See [WordPress plugin](#wordpress-plugin).
+
 **Can I use it in a commercial product?**
 Yes. The code is MIT. The word lists carry MPL-1.1 and CC BY terms: both allow commercial use, CC BY asks for attribution, and MPL-1.1 asks that changes to those data files stay open. See [Licence](#licence) and `NOTICE`.
 
@@ -257,7 +292,8 @@ No. It does not rewrite sentences. It finds what can be decided by rule, so the 
 | `src/gramoten/` | The package: code, its word lists (`data/`, 17 MB) and the full reference README. |
 | `tests/` | The tests, one file per area: spelling, format, punctuation, grammar, fonts and the API. |
 | `tools/` | The scripts that rebuild the word lists from their sources, and the sources' licences (`tools/bg_BG/SOURCE.md`). |
-| `assets/` | The logo and icons. |
+| `assets/` | The logo, icons and screenshots. |
+| `wordpress/` | The WordPress plugin: the checker in TypeScript, the editor side, the browser tests. |
 
 ## Build and test
 
@@ -268,7 +304,7 @@ uv run --group dev mypy               # types
 uv build                              # wheel and sdist in dist/
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same on Linux, macOS and Windows, Python 3.11 to 3.13. Changes are listed in `CHANGELOG.md`.
+CI (`.github/workflows/ci.yml`) runs the same on Linux, macOS and Windows, Python 3.11 to 3.13, and tests the WordPress plugin separately: a comparison with the Python package, and browser tests in real WordPress with Chrome, Firefox, WebKit and Safari. Changes are listed in `CHANGELOG.md`.
 
 It depends on `marisa-trie` only and needs Python 3.11 or newer.
 
@@ -281,5 +317,6 @@ It depends on `marisa-trie` only and needs Python 3.11 or newer.
 | Misspelling table | MIT, from Chitanka |
 | Word counts behind modern words, names and ranking | CC BY, Leipzig Corpora Collection |
 | EU legal words | © European Union, Decision 2011/833/EU |
+| The WordPress plugin as a whole (`wordpress/`) | GPL-3.0-or-later; the bgOffice dictionary is used there under GPL-2.0-or-later (`wordpress/plugin/NOTICE`) |
 
 Credits: `NOTICE`; sources: `tools/bg_BG/SOURCE.md`, `tools/morphology/SOURCE.md`. `pyproject.toml` declares `MIT AND MPL-1.1 AND LicenseRef-Leipzig-CC-BY`.

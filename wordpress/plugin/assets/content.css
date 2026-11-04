@@ -1,0 +1,28 @@
+/* The underlines. Core gives every annotation a yellow background and black text, which
+   would hide the word on a dark block; here only a wavy line. */
+.annotation-text-gramoten-spelling,
+.annotation-text-gramoten-other {
+  background: none !important;
+  color: inherit !important;
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.annotation-text-gramoten-spelling {
+  text-decoration-color: #cc1818;
+}
+
+.annotation-text-gramoten-other {
+  text-decoration-color: #3858e9;
+}
+
+/* Where annotations cannot reach: the title, table cells, the Details summary. */
+::highlight(gramoten-spelling) {
+  text-decoration: underline wavy #cc1818;
+}
+
+::highlight(gramoten-other) {
+  text-decoration: underline wavy #3858e9;
+}

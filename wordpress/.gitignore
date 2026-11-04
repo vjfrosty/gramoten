@@ -1,0 +1,6 @@
+node_modules/
+# Generated: `npm run build` and `tools/build_data.py`.
+plugin/build/
+plugin/data/
+tests/corpus.json
+*.zip

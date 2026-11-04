@@ -31,6 +31,85 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: uv run --group dev pytest -q
 
+  # The WordPress plugin's port must say what the Python package says.
+  wordpress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: uv run --group dev python wordpress/tools/build_data.py
+      - run: uv run --group dev python wordpress/tests/make_corpus.py
+      - run: npm ci
+        working-directory: wordpress
+      - run: npm run typecheck
+        working-directory: wordpress
+      - run: npm test
+        working-directory: wordpress
+      - run: npm run build
+        working-directory: wordpress
+      - run: uv run --group dev python wordpress/tools/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-plugin
+          path: wordpress/gramoten.zip
+
+  # The plugin in real WordPress: every scenario in each browser engine.
+  wordpress-browsers:
+    needs: wordpress
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: wordpress/tests/e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: wordpress-plugin
+          path: wordpress
+      - run: npm ci
+      - run: npx playwright-core install --with-deps ${{ matrix.engine }}
+      - run: |
+          npx @wp-playground/cli server --port=9400 --login --blueprint=blueprint-empty.json > server.log 2>&1 &
+          timeout 300 sh -c 'until curl -s -o /dev/null http://127.0.0.1:9400/; do sleep 2; done'
+      - run: node run.mjs http://127.0.0.1:9400 --engine ${{ matrix.engine }} --upload ../../gramoten.zip --remove-at-end
+        timeout-minutes: 15
+
+  # Real Safari exists only on a Mac.
+  wordpress-safari:
+    needs: wordpress
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: wordpress/tests/e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: wordpress-plugin
+          path: wordpress
+      - run: npm ci
+      - run: sudo safaridriver --enable
+      - run: |
+          mkdir -p "$RUNNER_TEMP/plugin"
+          unzip -q ../../gramoten.zip -d "$RUNNER_TEMP/plugin"
+          npx @wp-playground/cli server --port=9400 --login --blueprint=blueprint-active.json --mount-dir "$RUNNER_TEMP/plugin/gramoten" /wordpress/wp-content/plugins/gramoten > server.log 2>&1 &
+          for i in $(seq 1 150); do curl -s -o /dev/null http://127.0.0.1:9400/ && break; sleep 2; done
+      - run: node safari.mjs http://127.0.0.1:9400
+        timeout-minutes: 15
+
   build:
     runs-on: ubuntu-latest
     steps:
