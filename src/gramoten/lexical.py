@@ -259,6 +259,19 @@ _JOINED_ADJECTIVE = re.compile(
 )
 
 
+#: A prefix cut off from its word by a hyphen and a space: `пра- внучката`.
+_SPLIT_PREFIX = re.compile(B + r"([Пп]ра|[Пп]ре|[Пп]ри|[Пп]ро)- +([а-я]+)" + E)
+
+
+def _split_prefixes(text: str) -> list[Hit]:
+    hits = []
+    for m in _SPLIT_PREFIX.finditer(text):
+        joined = m.group(1) + m.group(2)
+        if spelling.is_correct(joined):
+            hits.append(Hit("written_together", m.start(), m.end(), f"Written together: „{joined}“", joined))
+    return hits
+
+
 def _joined_adjectives(text: str) -> list[Hit]:
     hits = []
     for m in _JOINED_ADJECTIVE.finditer(text):
@@ -359,7 +372,16 @@ def _range(text: str) -> list[Hit]:
     return hits
 
 
-DETECTORS = (_article_after_preposition, _v_s, _superlative, _together, _joined_adjectives, _repeated, _range)
+DETECTORS = (
+    _article_after_preposition,
+    _v_s,
+    _superlative,
+    _together,
+    _joined_adjectives,
+    _split_prefixes,
+    _repeated,
+    _range,
+)
 
 
 def check(text: str) -> list[Hit]:

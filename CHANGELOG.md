@@ -17,6 +17,8 @@ All notable changes are listed here. The format follows
   (it was `21-вят`).
 - A year after a full date takes a space: `31.12.2024г.` → `31.12.2024 г.`; a year
   before a dash too (`1991г.-1999г.`); `20 000г.` is no year and is left alone.
+- A day's suffix without the hyphen before a month: `1ви Май` → `1 Май`.
+- A prefix cut off by a hyphen and a space: `пра- внучката` → `правнучката`.
 - `count_form`: `12 063 третокласни пътища` → `пътя` (road), not `пъти` (time).
 - `double_article` no longer flags `международния кръстопът`.
 - Glued `не` and a verb get the two words as the first suggestion:
@@ -33,6 +35,18 @@ All notable changes are listed here. The format follows
   `антивирусите`, `брандингите`, `видеомонтажите`, `мегасъбитията` (3,052 forms).
   About 40 misspelt forms in the modern word list that this exposed are now
   corrected (`абцеси` -> `абсцеси`, `черезвичайни` -> `чрезвичайни`, `искусство` -> `изкуство`).
+- Sound-alike suggestions also know clusters heard as one sound: `ацки` → `адски`,
+  `площа` → `площта`, `вище` → `вижте`, `чусвам` → `чувствам`, `милярд` → `милиард`
+  (right word first on words written by sound: 95.1% → 95.6%).
+- `участвувам` and all its forms are flagged, `участвам` first (the form was dropped
+  from the norm); `наименувам` stays correct.
+- Dialect forms and slips the modern word list had accepted are flagged: `таквоз` → `такъв`,
+  `тогоз` → `този`, `оногоз` → `онзи`, `гешеф` → `гешефт`, `байряк` → `байрак`,
+  `синур` → `синор`, `медиа` → `медия` (`медиа-групата` is still accepted).
+- gramoten's own corrections now come before Chitanka's: `гешеф` → `гешефт` (not `гешев`),
+  `военоначалник` → `военачалник`, `фъргам` → `хвърлям`.
+- 91 forms of address (`котко`, `пирате`, `бащице`, `осветителю`) and the `-че`
+  diminutives (`виетнамче`) are accepted; things stay out (`банко`, `каско`).
 - `tools/build_inflections.py` takes about 80 seconds instead of 22 minutes, with the
   same output: the models for each ending are worked out once.
 - Suggestions are 2.5 times as fast, with the same results: the search asks one

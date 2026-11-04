@@ -138,6 +138,10 @@ def _singular_next(after: str) -> bool:
 
 def _ordinals(text: str) -> list[Hit]:
     hits = []
+    # `1ви май`, `5ти март`: a day before the month, its suffix written without the hyphen
+    months = "|".join(MONTHS)
+    for m in re.finditer(r"(?<![\w.,/-])(\d{1,2})(?:ви|ри|ти|ми|и)(?=\s+(?:%s)(?![а-я]))" % months, text, re.I):
+        hits.append(Hit("ordinal_date", m.start(), m.end(), "A day before the month takes no suffix", m.group(1)))
     for m in re.finditer(r"(?<![\w.,/-])(\d{1,4})-([а-я]{1,4})(?![\w-])", text):
         number, suffix = m.group(1), m.group(2)
         after = text[m.end() : m.end() + 12].lstrip()

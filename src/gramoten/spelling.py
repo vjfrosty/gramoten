@@ -33,13 +33,18 @@ SECOND_EDIT_STEPS = 100_000
 #: Spellings that sound alike, or nearly, in Bulgarian, each way round: reduced
 #: unstressed vowels (`а/ъ`, `о/у`, `е/и`), the `я/е` alternation, voiced and voiceless
 #: consonants (`д/т`, `з/с`), `я`, `ю` and `щ` spelt out by sound (`йа`, `йу`, `шт`),
-#: `ия` heard as `еъ`, and a `т` or `д` lost between consonants (`честно` as `чесно`).
+#: `ия` heard as `еъ`, `иа` as `я` (`милярд`), a `т` or `д` lost between consonants
+#: (`честно` as `чесно`, `площта` as `площа`, `чувствам` as `чуствам`), and clusters
+#: that sound as one consonant: `дс`/`тс` as `ц` (`адски` as `ацки`), `жт` as `щ`
+#: (`вижте` as `вище`), `хв` as `ф` (`хвърлям`), `ст` as `з` before a voiced consonant
+#: (`гозба`), `вз` as `з` (`взема`).
 SOUND_ALIKE = (
     ("а", "ъ"), ("о", "у"), ("е", "и"), ("е", "я"), ("я", "ъ"), ("я", "а"), ("ю", "у"),
     ("б", "п"), ("в", "ф"), ("г", "к"), ("д", "т"), ("ж", "ш"), ("з", "с"), ("и", "й"),
     ("я", "йа"), ("я", "йъ"), ("ю", "йу"), ("щ", "шт"), ("ьо", "йо"),
-    ("ия", "еъ"), ("ия", "иъ"), ("ия", "ийъ"), ("ия", "еа"),
-    ("стн", "сн"), ("здн", "зн"), ("ст", "с"),
+    ("ия", "еъ"), ("ия", "иъ"), ("ия", "ийъ"), ("ия", "еа"), ("иа", "я"), ("еи", "ей"),
+    ("стн", "сн"), ("здн", "зн"), ("ст", "с"), ("щт", "щ"), ("вств", "ств"), ("вств", "св"),
+    ("дс", "ц"), ("тс", "ц"), ("жт", "щ"), ("хв", "ф"), ("ст", "з"), ("вз", "з"), ("стч", "шч"),
 )  # fmt: skip
 #: What a sound-alike spelling becomes, by what is written: the pairs above both ways,
 #: and every letter doubled or undoubled (`мисъл`/`ммисъл`, `оттам`/`отам`).
@@ -74,9 +79,9 @@ ABBREVIATIONS = frozenset(
 UNITS = frozenset("км м см мм кг г мг л мл дка ха кв.м мб гб кб мвт квт вт".split())
 
 #: First parts of hyphenated compounds that are no word of their own:
-#: `австро-унгарски`, `англо-саксонски`, `франко-германски`, `гръко-римски`.
+#: `австро-унгарски`, `англо-саксонски`, `франко-германски`, `гръко-римски`, `медиа-групата`.
 COMBINING_FORMS = frozenset(
-    "австро англо франко германо гръко индо афро испано италиано българо славяно юдео греко".split()
+    "австро англо франко германо гръко индо афро испано италиано българо славяно юдео греко медиа".split()
 )
 
 #: All-capital words this short are acronyms (ДДС, ЕАД, УЕФА); they are not spelt.
@@ -178,15 +183,16 @@ def forbidden_words() -> frozenset[str]:
 
 
 def known_correction(word: str) -> str | None:
-    """The correction for this misspelling, if one is known: what people looked up on
-    Chitanka, gramoten's own list, or a feminine noun in -ост/-ст missing its second т
-    (`радоста` → `радостта`)."""
+    """The correction for this misspelling, if one is known: gramoten's own list, what
+    people looked up on Chitanka, or a feminine noun in -ост/-ст missing its second т
+    (`радоста` → `радостта`). The own list comes first, as it was read word by word
+    (`гешеф` → `гешефт`, where Chitanka has `гешев`)."""
     lower = word.lower()
+    if lower in _corrections():
+        return _corrections()[lower]
     found = _misspellings().get(lower)
     if found:
         return found[0].decode("utf-8")
-    if lower in _corrections():
-        return _corrections()[lower]
     if lower.endswith("ста") and in_dictionary(lower[:-1] + "та"):
         return lower[:-1] + "та"
     return None

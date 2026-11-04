@@ -160,6 +160,20 @@ class ModernWordsAndRobustText(unittest.TestCase):
                 self.assertIsNone(spelling.known_correction(wrong))
                 self.assertEqual(spelling.suggest(wrong)[0], right)
 
+    def test_clusters_heard_as_one_sound_get_the_right_word_first(self) -> None:
+        cases = {"ацки": "адски", "площа": "площта", "вище": "вижте", "чусвам": "чувствам", "гостба": "гозба"}
+        for wrong, right in cases.items():
+            with self.subTest(wrong=wrong):
+                self.assertEqual(spelling.suggest(wrong)[0], right)
+
+    def test_forms_of_address_people_use(self) -> None:
+        for word in ("котко", "пирате", "бащице", "червенушко", "осветителю", "виетнамче", "язовчета"):
+            with self.subTest(word=word):
+                self.assertTrue(spelling.is_correct(word))
+        for word in ("банко", "каско", "човеке", "атлетико"):  # things, a team, a wrong form
+            with self.subTest(word=word):
+                self.assertFalse(spelling.is_correct(word))
+
     def test_suggestions_rank_by_general_bulgarian(self) -> None:
         self.assertEqual(spelling.suggest("тлефон")[0], "телефон")
 
@@ -411,6 +425,37 @@ class DictionaryErrata(unittest.TestCase):
                 self.assertFalse(spelling.is_correct(wrong))
                 self.assertEqual(spelling.suggest(wrong)[0], right)
                 self.assertNotIn(wrong, spelling.suggest(right[:-1] + "x"))
+
+    def test_the_dropped_uvam_form_of_uchastvam_is_flagged(self) -> None:
+        """`участвувам` was dropped from the norm; `наименувам` is the standard form and stays."""
+        for wrong, right in {
+            "участвува": "участва",
+            "участвувалите": "участвалите",
+            "участвуващи": "участващи",
+        }.items():
+            with self.subTest(wrong=wrong):
+                self.assertFalse(spelling.is_correct(wrong))
+                self.assertEqual(spelling.suggest(wrong)[0], right)
+        for word in ("наименувам", "наименувани", "съществува"):
+            with self.subTest(word=word):
+                self.assertTrue(spelling.is_correct(word))
+
+    def test_dialect_and_cut_off_words_get_the_standard_word(self) -> None:
+        cases = {
+            "таквоз": "такъв",
+            "тогоз": "този",
+            "гешеф": "гешефт",
+            "байряци": "байраци",
+            "синура": "синора",
+            "медиа": "медия",
+        }
+        for wrong, right in cases.items():
+            with self.subTest(wrong=wrong):
+                self.assertFalse(spelling.is_correct(wrong))
+                self.assertEqual(spelling.suggest(wrong)[0], right)
+        for word in ("хихихи", "фанелка", "тогози", "медиа-групата", "груп"):
+            with self.subTest(word=word):
+                self.assertTrue(spelling.is_correct(word))
 
     def test_both_standard_spellings_of_a_word_are_accepted(self) -> None:
         """пинцет (м.), пинцета and пинсета (ж.) are all standard, мн. пинцети."""
