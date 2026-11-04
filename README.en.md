@@ -1,28 +1,30 @@
-<p align="center"><img src="https://raw.githubusercontent.com/vjfrosty/gramoten/main/assets/logo-long.png" alt="Грамотен (gramoten) logo: a Bulgarian spell checker and grammar checker for Python" width="480"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/vjfrosty/gramoten/main/assets/logo-long.png" alt="Грамотен (gramoten) logo: a Bulgarian spell checker and grammar checker for Python and WordPress" width="480"></p>
 
 <p align="center"><a href="https://github.com/vjfrosty/gramoten/blob/main/README.md">Български</a> · <b>English</b></p>
 
 <p align="center">
   <a href="https://github.com/vjfrosty/gramoten/actions/workflows/ci.yml"><img src="https://github.com/vjfrosty/gramoten/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue" alt="Python 3.11, 3.12, 3.13">
-  <img src="https://img.shields.io/badge/license-MIT%20%2B%20MPL--1.1-green" alt="Licence: MIT and MPL-1.1">
+  <img src="https://img.shields.io/badge/WordPress-6.6%2B-21759B" alt="Plugin for WordPress 6.6 or later">
+  <img src="https://img.shields.io/badge/TypeScript-plugin-3178C6" alt="The plugin is written in TypeScript">
+  <img src="https://img.shields.io/badge/license-MIT%20%2B%20MPL--1.1%20%C2%B7%20plugin%20GPL--3.0-green" alt="Licence: MIT and MPL-1.1, the plugin under GPL-3.0">
   <img src="https://img.shields.io/badge/language-Bulgarian-red" alt="Language: Bulgarian">
 </p>
 
-# gramoten: Bulgarian spell checker and grammar checker for Python
+# gramoten: Bulgarian spell checker and grammar checker for Python and WordPress
 
-**gramoten** (Грамотен, "literate") is an offline **Bulgarian spell checker**, **grammar checker** and **punctuation checker** for Python. It checks any Bulgarian (Cyrillic) text by rule, with no language model, no API and no network. It finds spelling mistakes, missing commas, grammar errors and typography problems, and proposes fixes; it never changes the text by itself. Use it as a Python library, from the command line, as a small HTTP service behind a web editor, or as a WordPress plugin.
+**gramoten** (Грамотен, "literate") is an offline **Bulgarian spell checker**, **grammar checker** and **punctuation checker** for Python, with a [WordPress plugin](#wordpress-plugin). It checks any Bulgarian (Cyrillic) text by rule, with no language model, no API and no network. It finds spelling mistakes, missing commas, grammar errors and typography problems, and proposes fixes; it never changes the text by itself. Use it as a Python library, from the command line, or as a small HTTP service behind a web editor. The plugin is the same checker ported to TypeScript: it runs in the browser, in the WordPress block editor.
 
 | | |
 |---|---|
 | **Checks** | spelling, punctuation (commas), grammar, orthography, typography and format, mixed Latin/Cyrillic, fonts in e-mail HTML |
 | **Language** | Bulgarian (български език) |
-| **Works as** | Python library · command line tool · HTTP endpoint for a web page · [WordPress plugin](#wordpress-plugin) |
-| **Needs** | Python 3.11+ and one library, `marisa-trie` (wheels for Windows, macOS, Linux) |
+| **Works as** | Python library · command line tool · HTTP endpoint for a web page · [WordPress plugin in TypeScript](#wordpress-plugin) |
+| **Needs** | Python 3.11+ and one library, `marisa-trie` (wheels for Windows, macOS, Linux). The plugin: WordPress 6.6+ and PHP 7.4+ |
 | **Speed** | about 12 ms for a 300-word e-mail; word lists load once in about 15 ms |
 | **Memory and size** | about 45 MB of RAM; the wheel is about 11 MB with every word list |
-| **Privacy** | runs in your process, offline; text never leaves the machine |
-| **Licence** | MIT code; MPL-1.1 and CC BY data (see [Licence](#licence)) |
+| **Privacy** | runs in your process, offline; text never leaves the machine. The plugin runs in the writer's browser |
+| **Licence** | MIT code; MPL-1.1 and CC BY data; the plugin as a whole is GPL-3.0-or-later (see [Licence](#licence)) |
 
 ## Contents
 
@@ -57,6 +59,8 @@ gramoten.fix_text("Знаем че до сега.")   # 'Знаем, че дос
 ```
 
 `check()` returns a list of findings (`Issue`), each with exact offsets, the rule, a message in English and Bulgarian and, where the correction is certain, the fix. `fix_text()` applies every certain fix; spelling is never changed automatically.
+
+For WordPress, see [WordPress plugin](#wordpress-plugin).
 
 ## See it working
 
