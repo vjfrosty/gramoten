@@ -66,7 +66,7 @@ only-include = [
     "CHANGELOG.md",
     "pyproject.toml",
 ]
-exclude = ["__pycache__", "*.pyc", "tools/dl", "tools/morphology/dl"]
+exclude = ["__pycache__", "*.pyc", "tools/dl", "tools/morphology/dl", "tools/*.pdf", "tools/*.exe", "tools/*.xls", "tools/*.xlsx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

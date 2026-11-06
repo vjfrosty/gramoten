@@ -6,3 +6,8 @@ build/
 .pytest_cache/
 tools/dl/
 tools/morphology/dl/
+# Local files that must never be committed or packaged
+tools/*.pdf
+tools/*.exe
+tools/*.xls
+tools/*.xlsx
