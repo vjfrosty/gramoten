@@ -92,27 +92,31 @@ Flags unknown words and suggests up to five: known corrections first, then the c
 
 ### Punctuation
 
-Commas before conjunctions and relative words, after a vocative, inside compounds such as `въпреки, че`; doubled marks, unbalanced brackets and quotes.
+Commas before conjunctions and relative words, after a vocative, inside compounds such as `въпреки, че`; a comma before `т.е.` and none after it; none before `дали` in an indirect question; `както ..., така и`; doubled marks, unbalanced brackets and quotes.
 
 | Wrong | Right |
 |---|---|
 | `Знаем че идваш.` | `Знаем, че идваш.` |
 | `Въпреки, че вали, излязохме.` | `Въпреки че вали, излязохме.` |
+| `Не знам, дали ще дойде.` | `Не знам дали ще дойде.` |
+| `Както в София така и в Пловдив.` | `Както в София, така и в Пловдив.` |
 
 ### Grammar
 
-Double article, article after a preposition or a copula, count forms (`24 месеци`), `в/във`, `с/със`, agreement with `Вие`, repeated words.
+Double article, article after a preposition or a copula, count forms (`24 месеци`), no count form for people (`5 служителя`), `в/във`, `с/със`, agreement with `Вие`, a participle included (`Вие сте казал`), repeated words.
 
 | Wrong | Right |
 |---|---|
 | `Чакахме 24 месеци.` | `Чакахме 24 месеца.` |
+| `Наехме 5 служителя.` | `Наехме 5 служители.` |
+| `Вие сте казал истината.` | `Вие сте казали истината.` |
 | `в връзка с това` | `във връзка с това` |
 | `с сестра си` | `със сестра си` |
 | `това това е` | `това е` |
 
 ### Orthography
 
-`й` → `ѝ`, ordinals (`5-ти` → `5-и`), dates, `19-годишен`, `10-процентна`, `г-н` without a full stop, words written together (`досега`).
+`й` → `ѝ`, ordinals (`5-ти` → `5-и`), dates, months and weekdays in lower case (`през май`), `19-годишен`, `10-процентна`, `г-н` without a full stop, words written together or with a hyphen (`досега`, `отколкото`, `току-що`, `министър-председател`).
 
 | Wrong | Right |
 |---|---|
@@ -121,6 +125,7 @@ Double article, article after a preposition or a copula, count forms (`24 мес
 | `19 годишен`, `10 процентна` | `19-годишен`, `10-процентна` |
 | `Г-н. Петров` | `Г-н Петров` |
 | `До сега не знаех.` | `Досега не знаех.` |
+| `Ще се видим през Май.` | `Ще се видим през май.` |
 
 ### Format and typography
 
