@@ -5,8 +5,9 @@
 | `double_article` | the article goes on the first word of the phrase only: `Вашите данните` → `данни` |
 | `article_after_copula` | after е/са/остава/става a masculine modifier takes the full article: `е най-добрия` → `най-добрият` |
 | `count_form` | after a number a masculine noun that is no person takes the count form: `24 месеци` → `месеца` |
+| `count_form_person` | after a number a masculine noun that names only people takes the plural: `5 служителя` → `служители` (a closed list of such nouns) |
 | `plural_after_dvama` | after двама/трима the plural, not the count form: `трима сина` → `синове` |
-| `vie_agreement` | `Вие` with a verb that has no 2nd person plural (може/трябва excepted) |
+| `vie_agreement` | `Вие` with a verb that has no 2nd person plural (може/трябва excepted); `Вие сте казал` → `казали` (an л-participle; adjectives and passive participles keep the addressee's sex: `Вие сте поканен`) |
 
 A rule fires only when every reading of the words involved supports the
 error: one innocent reading keeps it quiet. Unknown words never trigger one.
@@ -388,6 +389,92 @@ def _plural_after_dvama(text: str, tokens: list[Token]) -> list[Hit]:
     return hits
 
 
+# -- a number + a noun naming people -----------------------------------------------------
+
+#: Masculine nouns that name only people, so after a number they take the plural:
+#: `5 служители`, not `5 служителя` (ОПР 2012; ИБЕ „Няколко студенти или няколко
+#: студента“). A closed list: nouns that may also name a firm or a thing stay out
+#: (`оператор`, `доставчик`, `производител`, `член`, `спътник`, `приемник`; `кандидат`
+#: for a vaccine), and so does
+#: `човек`, whose `пет човека` the norm allows.
+PERSON_NOUNS = frozenset(
+    """служител ученик студент учител преподавател лекар клиент потребител ползвател абонат
+работник специалист експерт консултант гост пасажер депутат кмет министър войник
+полицай пациент жител посетител зрител читател слушател турист спортист играч състезател
+треньор сътрудник колега приятел съученик съсед гражданин стажант докторант първокласник
+абсолвент възпитаник победител финалист доброволец дарител инвеститор акционер собственик
+наемател купувач продавач търговец шофьор пилот моряк офицер генерал журналист адвокат
+прокурор съдия инженер програмист мениджър директор чиновник представител наблюдател делегат
+избирател привърженик поддръжник пенсионер футболист баскетболист волейболист тенисист
+боксьор атлет шампион медалист лауреат автор писател художник музикант артист актьор певец
+танцьор фотограф хирург фармацевт стоматолог медик санитар болногледач брокер счетоводител
+юрист икономист библиотекар готвач сервитьор барман фермер строител монтьор механик шивач
+фризьор пощальон куриер охранител пазач затворник бежанец мигрант емигрант имигрант арестант
+извършител крадец убиец свидетел заложник младеж мъж син брат внук братовчед племенник
+съпруг годеник""".split()
+)
+#: The numerals whose noun this rule may change: a digit reads as `двама`/`петима`, but
+#: `два`/`три`/`четири` before a person need the numeral changed too, so they stay out.
+PERSON_COUNTERS = NUMBER_WORDS - {"два", "три", "четири"}
+
+
+def _person_count(text: str, end: int, following: list[Token]) -> list[Hit]:
+    previous = end
+    for word, start, stop in following:
+        if text[previous:start] not in (" ", " ") or word[0].isupper():
+            return []
+        readings = _readings(word)
+        if _all_modifiers(readings) and all(r.tag.get("n") == "p" and r.tag.get("d") == "i" for r in readings):
+            previous = stop
+            continue  # `5 нови служителя`: past the adjectives
+        is_noun, nouns = _all_nouns(readings)
+        if not is_noun or not all(
+            r.base in PERSON_NOUNS
+            and r.tag.get("g") == "m"
+            and (r.tag.get("n") == "c" or (r.tag.get("n") == "s" and r.tag.get("d") == "h"))
+            for r in nouns
+        ):
+            return []
+        plurals = sorted({f for r in nouns for f in morphology.inflect(r.lemma, n="p", d="i")})
+        if not plurals:
+            return []
+        return [
+            Hit(
+                "count_form_person",
+                start,
+                stop,
+                "After a number a noun naming people takes the plural",
+                plurals[0] if len(plurals) == 1 else None,
+            )
+        ]
+    return []
+
+
+def _count_form_person(text: str, tokens: list[Token]) -> list[Hit]:
+    hits = []
+    starts = [t[1] for t in tokens]
+    for m in re.finditer(r"(?<![\w.,/:-])(\d+)(?=[  ][а-я])", text):
+        number = m.group(1)
+        if number.endswith("1") and not number.endswith("11"):
+            continue  # `21 служител`: one takes the singular
+        if re.search(r"(?:[.№/:-]|[A-Za-z][\w-]*|\d\s*(?:,|и|или))\s*$", before(text, m.start())):
+            continue  # `чл. 5`, `NUTS 2`, `1, 2 и 3`: a reference or a list
+        if re.fullmatch(r"(?:19|20)\d\d", number) and re.search(
+            r"(?<![\w-])(?:от|през|в|до|след|преди)\s+$", before(text, m.start()).lower()
+        ):
+            continue  # `от 2006 депутата издигат…`: a year
+        previous = re.search(r"(\S+)\s+$", before(text, m.start()))
+        previous_readings = _readings(previous.group(1)) if previous else []
+        if previous_readings and all(r.tag["pos"] in ("N", "Nm") for r in previous_readings):
+            continue  # `стая 5 служителя`: a reference, not a count
+        following = bisect.bisect_right(starts, m.end())
+        hits += _person_count(text, m.end(), tokens[following : following + 3])
+    for i, (word, _start, stop) in enumerate(tokens):
+        if word.lower() in PERSON_COUNTERS:
+            hits += _person_count(text, stop, tokens[i + 1 : i + 4])
+    return hits
+
+
 # -- Вие + verb ------------------------------------------------------------------------
 
 IMPERSONAL = {
@@ -442,7 +529,60 @@ def _vie_agreement(text: str, tokens: list[Token]) -> list[Hit]:
     return hits
 
 
-DETECTORS = (_double_article, _article_after_copula, _count_form, _plural_after_dvama, _vie_agreement)
+#: The auxiliary after `Вие` and the short words that may stand between it and the participle.
+VIE_AUXILIARIES = {"сте", "бяхте", "бихте"}
+CLITICS = {"се", "си", "ми", "ти", "му", "ѝ", "й", "ни", "ви", "им", "го", "я", "ги"}
+
+
+def _vie_participle(text: str, tokens: list[Token]) -> list[Hit]:
+    """`Вие сте казал` → `казали`: with `Вие` the л-participle is plural, also in polite address.
+    Adjectives and passive participles keep the addressee's sex (`Вие сте поканен`, `доволна`)."""
+    hits = []
+    for i in range(len(tokens) - 2):
+        (w1, s1, e1), (aux, sa, ea) = tokens[i], tokens[i + 1]
+        if w1.lower() != "вие" or text[e1:sa] != " ":
+            continue
+        if re.search(r"(?:\bи|,)\s+$", before(text, s1)):
+            continue  # `Иван и вие сте казал`: a coordinated subject
+        j = i + 1
+        if aux.lower() == "не" and j + 1 < len(tokens) and text[ea : tokens[j + 1][1]] == " ":
+            j += 1
+        if tokens[j][0].lower() not in VIE_AUXILIARIES:
+            continue
+        j += 1
+        while j < len(tokens) and tokens[j][0].lower() in CLITICS and text[tokens[j - 1][2] : tokens[j][1]] == " ":
+            j += 1
+        if j >= len(tokens) or text[tokens[j - 1][2] : tokens[j][1]] != " ":
+            continue
+        word, start, stop = tokens[j]
+        readings = _readings(word)
+        if not readings or not all(
+            r.tag["pos"] == "V" and r.tag.get("v") in ("ptc_aor", "ptc_impf") and r.tag.get("n") == "s"
+            for r in readings
+        ):
+            continue
+        plurals = sorted({f for r in readings for f in morphology.inflect(r.lemma, v=r.tag["v"], n="p", d="i")})
+        hits.append(
+            Hit(
+                "vie_agreement",
+                start,
+                stop,
+                "With „Вие“ the participle is plural",
+                _case(plurals[0], word) if len(plurals) == 1 else None,
+            )
+        )
+    return hits
+
+
+DETECTORS = (
+    _double_article,
+    _article_after_copula,
+    _count_form,
+    _count_form_person,
+    _plural_after_dvama,
+    _vie_agreement,
+    _vie_participle,
+)
 
 
 def check(text: str) -> list[Hit]:

@@ -254,6 +254,77 @@ function countForm(text: string, tokens: readonly Token[]): Hit[] {
   return hits;
 }
 
+/** Masculine nouns that name only people: after a number the plural, `5 служители`. */
+const PERSON_NOUNS = set(`служител ученик студент учител преподавател лекар клиент потребител ползвател абонат
+работник специалист експерт консултант гост пасажер депутат кмет министър войник
+полицай пациент жител посетител зрител читател слушател турист спортист играч състезател
+треньор сътрудник колега приятел съученик съсед гражданин стажант докторант първокласник
+абсолвент възпитаник победител финалист доброволец дарител инвеститор акционер собственик
+наемател купувач продавач търговец шофьор пилот моряк офицер генерал журналист адвокат
+прокурор съдия инженер програмист мениджър директор чиновник представител наблюдател делегат
+избирател привърженик поддръжник пенсионер футболист баскетболист волейболист тенисист
+боксьор атлет шампион медалист лауреат автор писател художник музикант артист актьор певец
+танцьор фотограф хирург фармацевт стоматолог медик санитар болногледач брокер счетоводител
+юрист икономист библиотекар готвач сервитьор барман фермер строител монтьор механик шивач
+фризьор пощальон куриер охранител пазач затворник бежанец мигрант емигрант имигрант арестант
+извършител крадец убиец свидетел заложник младеж мъж син брат внук братовчед племенник
+съпруг годеник`);
+const PERSON_COUNTERS: ReadonlySet<string> = new Set([...NUMBER_WORDS].filter((w) => w !== "два" && w !== "три" && w !== "четири"));
+
+function personCount(text: string, end: number, following: readonly Token[]): Hit[] {
+  let previous = end;
+  for (const [word, start, stop] of following) {
+    const gap = text.slice(previous, start);
+    if ((gap !== " " && gap !== "\xa0") || isUpper(first(word))) return [];
+    const found = readings(word);
+    if (allModifiers(found) && found.every((r) => r.tag.n === "p" && r.tag.d === "i")) {
+      previous = stop;
+      continue; // `5 нови служителя`: past the adjectives
+    }
+    const [isNoun, nouns] = allNouns(found);
+    if (
+      !isNoun ||
+      !nouns.every((r) => PERSON_NOUNS.has(r.base) && r.tag.g === "m" && (r.tag.n === "c" || (r.tag.n === "s" && r.tag.d === "h")))
+    ) {
+      return [];
+    }
+    const plurals = [...new Set(nouns.flatMap((r) => inflect(r.lemma, { n: "p", d: "i" })))].sort();
+    if (!plurals.length) return [];
+    return [
+      {
+        code: "count_form_person",
+        start,
+        end: stop,
+        message: "After a number a noun naming people takes the plural",
+        fix: plurals.length === 1 ? plurals[0] : null,
+      },
+    ];
+  }
+  return [];
+}
+
+function countFormPerson(text: string, tokens: readonly Token[]): Hit[] {
+  const hits: Hit[] = [];
+  const starts = tokens.map((t) => t[1]);
+  for (const m of finditer(String.raw`(?<![\w.,/:-])(\d+)(?=[ \xa0][а-я])`, text)) {
+    const number = m.group(1);
+    if (number.endsWith("1") && !number.endsWith("11")) continue; // `21 служител`
+    if (search(String.raw`(?:[.№/:-]|[A-Za-z][\w-]*|\d\s*(?:,|и|или))\s*$`, before(text, m.index))) continue;
+    if (fullmatch(String.raw`(?:19|20)\d\d`, number) && search(String.raw`(?<![\w-])(?:от|през|в|до|след|преди)\s+$`, before(text, m.index).toLowerCase())) {
+      continue; // a year
+    }
+    const previous = search(String.raw`(\S+)\s+$`, before(text, m.index));
+    const previousReadings = previous ? readings(previous.group(1)) : [];
+    if (previousReadings.length && previousReadings.every((r) => r.tag.pos === "N" || r.tag.pos === "Nm")) continue;
+    const following = bisectRight(starts, m.end);
+    hits.push(...personCount(text, m.end, tokens.slice(following, following + 3)));
+  }
+  tokens.forEach(([word, , stop], i) => {
+    if (PERSON_COUNTERS.has(word.toLowerCase())) hits.push(...personCount(text, stop, tokens.slice(i + 1, i + 4)));
+  });
+  return hits;
+}
+
 const PERSONAL_NUMERALS = set("двама трима четирима петима шестима седмина осмина деветима десетима");
 
 function pluralAfterDvama(text: string, tokens: readonly Token[]): Hit[] {
@@ -313,7 +384,41 @@ function vieAgreement(text: string, tokens: readonly Token[]): Hit[] {
   return hits;
 }
 
-const DETECTORS = [doubleArticle, articleAfterCopula, countForm, pluralAfterDvama, vieAgreement];
+const VIE_AUXILIARIES = set("сте бяхте бихте");
+const CLITICS = set("се си ми ти му ѝ й ни ви им го я ги");
+
+/** `Вие сте казал` → `казали`: with `Вие` the л-participle is plural; adjectives and passive participles are left alone. */
+function vieParticiple(text: string, tokens: readonly Token[]): Hit[] {
+  const hits: Hit[] = [];
+  for (let i = 0; i + 2 < tokens.length; i++) {
+    const [w1, s1, e1] = tokens[i];
+    const [aux, sa, ea] = tokens[i + 1];
+    if (w1.toLowerCase() !== "вие" || text.slice(e1, sa) !== " ") continue;
+    if (search(String.raw`(?:\bи|,)\s+$`, before(text, s1))) continue; // a coordinated subject
+    let j = i + 1;
+    if (aux.toLowerCase() === "не" && j + 1 < tokens.length && text.slice(ea, tokens[j + 1][1]) === " ") j += 1;
+    if (!VIE_AUXILIARIES.has(tokens[j][0].toLowerCase())) continue;
+    j += 1;
+    while (j < tokens.length && CLITICS.has(tokens[j][0].toLowerCase()) && text.slice(tokens[j - 1][2], tokens[j][1]) === " ") j += 1;
+    if (j >= tokens.length || text.slice(tokens[j - 1][2], tokens[j][1]) !== " ") continue;
+    const [word, start, stop] = tokens[j];
+    const found = readings(word);
+    if (!found.length || !found.every((r) => r.tag.pos === "V" && (r.tag.v === "ptc_aor" || r.tag.v === "ptc_impf") && r.tag.n === "s")) {
+      continue;
+    }
+    const plurals = [...new Set(found.flatMap((r) => inflect(r.lemma, { v: r.tag.v, n: "p", d: "i" })))].sort();
+    hits.push({
+      code: "vie_agreement",
+      start,
+      end: stop,
+      message: "With „Вие“ the participle is plural",
+      fix: plurals.length === 1 ? caseLike(plurals[0], word) : null,
+    });
+  }
+  return hits;
+}
+
+const DETECTORS = [doubleArticle, articleAfterCopula, countForm, countFormPerson, pluralAfterDvama, vieAgreement, vieParticiple];
 
 /** The agreement rules of one text; offsets are into `text`. */
 export function check(text: string): Hit[] {

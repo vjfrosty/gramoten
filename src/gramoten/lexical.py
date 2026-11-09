@@ -8,7 +8,7 @@ Every word here is spelt right, and still wrong in its place: `на сайтът
 | `article_after_preposition` | after a preposition a masculine word takes the short article: `от сумарният` → `от сумарния` (ОПР 2012, т. 17.6) |
 | `v_vav`, `s_sas` | `във` before в/ф, `със` before с/з, and only there: `с запазени` → `със запазени` |
 | `repeated_word` | a function word twice: `и и`, `на на` (`си си` is right) |
-| `written_together` | `до сега` → `досега`, `в къщи` → `вкъщи`, `в предвид` → `предвид`, `тъмно зелен` → `тъмнозелен` |
+| `written_together` | `до сега` → `досега`, `в къщи` → `вкъщи`, `в предвид` → `предвид`, `тъмно зелен` → `тъмнозелен`; with a hyphen: `току що` → `току-що`, `министър председател` → `министър-председател` |
 | `superlative_hyphen` | `най много` → `най-много` |
 | `number_range` | `10-12 юли` → `10–12 юли` |
 
@@ -232,6 +232,13 @@ TOGETHER = [
     ("по-вече", "повече"),
     ("по-не", "поне"),
     ("от части", "отчасти"),
+    ("от колкото", "отколкото"),
+    ("до като", "докато"),
+    ("по ради", "поради"),
+    ("из между", "измежду"),
+    ("току що", "току-що"),
+    ("ноу хау", "ноу-хау"),
+    ("министър председател", "министър-председател"),
 ]
 #: All of them in one search: no entry can run into another, since each starts with a
 #: preposition and none ends with one, so the hits are the same as one search each.
@@ -326,11 +333,15 @@ def _together(text: str) -> list[Hit]:
             continue
         if wrong in ("в ляво", "в дясно", "на ляво", "на дясно") and re.match(r" \w+(та|то|те|ия|ият)\b", after):
             continue
+        if wrong == "от колкото" and not re.search(
+            r"(?:повече|по-|(?<![\w-])по [а-я]|различн|друг|предпоч|вместо)[^.!?]*$",
+            text[max(0, m.start() - 80) : m.start()].lower(),
+        ):
+            continue  # `интерес от колкото може повече дела`: no comparison, so no `отколкото`
         if wrong in ("до колко", "до колкото") and not _not_counted(after):
             continue  # `до колко часа`: колко counts a noun, so it stays apart
-        hits.append(
-            Hit("written_together", m.start(), m.end(), f"Written together: „{right}“", _case(right, m.group(0)))
-        )
+        message = f"Written with a hyphen: „{right}“" if "-" in right else f"Written together: „{right}“"
+        hits.append(Hit("written_together", m.start(), m.end(), message, _case(right, m.group(0))))
     return hits
 
 

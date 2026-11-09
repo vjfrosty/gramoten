@@ -188,6 +188,13 @@ const TOGETHER: ReadonlyArray<readonly [string, string]> = [
   ["по-вече", "повече"],
   ["по-не", "поне"],
   ["от части", "отчасти"],
+  ["от колкото", "отколкото"],
+  ["до като", "докато"],
+  ["по ради", "поради"],
+  ["из между", "измежду"],
+  ["току що", "току-що"],
+  ["ноу хау", "ноу-хау"],
+  ["министър председател", "министър-председател"],
 ];
 const TOGETHER_PATTERN = `${B}(?:${[...TOGETHER]
   .sort((a, b) => b[0].length - a[0].length)
@@ -250,8 +257,15 @@ function together(text: string): Hit[] {
     if (wrong === "от части" && match(String.raw` (на|от)\b`, after)) continue;
     if (wrong === "на пример" && search(String.raw`(дава|даде|дадат|дадем|посочва|посочи|служи|послужи)\w* *$`, preceding)) continue;
     if (["в ляво", "в дясно", "на ляво", "на дясно"].includes(wrong) && match(String.raw` \w+(та|то|те|ия|ият)\b`, after)) continue;
+    if (
+      wrong === "от колкото" &&
+      !search(String.raw`(?:повече|по-|(?<![\w-])по [а-я]|различн|друг|предпоч|вместо)[^.!?]*$`, text.slice(Math.max(0, m.index - 80), m.index).toLowerCase())
+    ) {
+      continue; // no comparison, so no `отколкото`
+    }
     if ((wrong === "до колко" || wrong === "до колкото") && !notCounted(after)) continue;
-    hits.push(hit("written_together", m.index, m.end, `Written together: „${right}“`, caseLike(right, m.group(0))));
+    const message = right.includes("-") ? `Written with a hyphen: „${right}“` : `Written together: „${right}“`;
+    hits.push(hit("written_together", m.index, m.end, message, caseLike(right, m.group(0))));
   }
   return hits;
 }

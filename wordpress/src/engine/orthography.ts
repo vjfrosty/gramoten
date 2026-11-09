@@ -2,7 +2,7 @@
 
 import type { Hit } from "./lexical.ts";
 import { analyse } from "./morphology.ts";
-import { finditer, fullmatch, lstrip, match, search, startsWithAny, toInt } from "./py.ts";
+import { capitalize, finditer, fullmatch, lstrip, match, search, startsWithAny, toInt } from "./py.ts";
 import { byPosition } from "./punctuation.ts";
 
 const MONTHS = ["януари", "февруари", "март", "април", "май", "юни", "юли", "август", "септември", "октомври", "ноември", "декември"];
@@ -124,7 +124,39 @@ function titles(text: string): Hit[] {
   );
 }
 
-const DETECTORS = [pronoun, ordinals, numberAdjectives, percent, titles];
+const WEEKDAYS = ["понеделник", "вторник", "сряда", "четвъртък", "петък", "събота", "неделя"];
+const DATE_PREPOSITIONS = ["през", "от", "до", "в", "във", "за", "след", "преди", "около"];
+/** `Август` (the emperor) and `Септември` (a club, a town) are names after any word but `през`. */
+const NAMES_TOO = ["август", "септември"];
+const DATE_CAPITAL =
+  String.raw`(?:(?<![\w.,/-])\d{1,2}[ \xa0]+(${MONTHS.map(capitalize).join("|")})` +
+  String.raw`|(?<![\w-])(?:${DATE_PREPOSITIONS.join("|")}) (${[...MONTHS, ...WEEKDAYS]
+    .filter((w) => !NAMES_TOO.includes(w))
+    .map(capitalize)
+    .join("|")})` +
+  String.raw`|(?<![\w-])през (${NAMES_TOO.map(capitalize).join("|")}))(?![\w-])`;
+
+function countOf(text: string, ch: string, end: number): number {
+  let n = 0;
+  for (let i = text.indexOf(ch); i !== -1 && i < end; i = text.indexOf(ch, i + 1)) n++;
+  return n;
+}
+
+/** `5 Януари`, `през Май`, `в Понеделник` → lower case; never inside „…“. */
+function dateCapitals(text: string): Hit[] {
+  const hits: Hit[] = [];
+  for (const m of finditer(DATE_CAPITAL, text)) {
+    const group = [1, 2, 3].find((g) => m.group(g)) as number;
+    if (countOf(text, "„", m.index) > countOf(text, "“", m.index) + countOf(text, "”", m.index)) continue;
+    if (text.slice(m.end, m.end + 6) === " пазар") continue; // `Събота пазар`: a place
+    hits.push(
+      hit("date_capital", m.start(group), m.stop(group), "Months and days of the week are written in lower case", m.group(group).toLowerCase()),
+    );
+  }
+  return hits;
+}
+
+const DETECTORS = [pronoun, ordinals, numberAdjectives, percent, titles, dateCapitals];
 
 export function check(text: string): Hit[] {
   return byPosition(DETECTORS.flatMap((detector) => detector(text)));

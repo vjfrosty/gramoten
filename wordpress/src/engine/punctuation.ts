@@ -264,7 +264,49 @@ function balance(text: string): Hit[] {
   return hits;
 }
 
-const DETECTORS = [conjunctions, relatives, adversative, repeated, vocative, splitCompounds, marks, balance];
+/** `т.е.`: a comma before it and none after (BERON 80.2). */
+function te(text: string): Hit[] {
+  const hits = finditer(String.raw`(?<![\w-])([Тт]\. ?е\.),(?= )`, text).map((m) =>
+    hit("comma_after_te", m.index, m.end, "No comma after „т.е.“", m.group(1)),
+  );
+  for (const m of finditer(String.raw`(?<=[а-я])( +)(т\. ?е\.)(?= )`, text)) {
+    const [prev, prevStart] = prevWord(text, m.start(2));
+    if (!prev || prevStart === null || NO_COMMA_PREV.has(prev.toLowerCase())) continue;
+    const [gap, fixed] = commaBefore(text, prevStart, prev, m.stop(2));
+    hits.push(hit("comma_before_conjunction", gap, m.stop(2), "Comma before „т.е.“", fixed));
+  }
+  return hits;
+}
+
+const ASKING_VERBS = set(`знам зная знаеш знае знаем знаете знаят знаех знаеше знаехме знаехте знаеха питам питаш пита
+питаме питате питат питах питаше питахме питаха попитам попиташ попита попитаме попитате попитат
+попитах попитахме попитаха чудя чудиш чуди чудим чудите чудят чудех чудеше чудехме чудеха
+проверя провериш провери проверим проверите проверят проверете проверявам проверява проверяват
+разбера разбереш разбере разберем разберете разберат разбра разбрах разбрахме видя видиш види видим
+видите видят вижте зависи зависят зависеше`);
+
+/** `Не знам, дали` → `Не знам дали`: an indirect question takes no comma. */
+function indirectQuestion(text: string): Hit[] {
+  const hits: Hit[] = [];
+  for (const m of finditer(String.raw`(?<![\w-])([а-яА-Я]+)(?: се)?, (дали)(?![\w-])`, text)) {
+    if (!ASKING_VERBS.has(m.group(1).toLowerCase())) continue;
+    if (match(String.raw`[^.!?;:]{0,80}?(?<![\w-])или(?![\w-])`, text, m.end)) continue; // `дали … или …`
+    hits.push(hit("comma_indirect_question", m.start(2) - 2, m.start(2), "No comma before „дали“ here", " "));
+  }
+  return hits;
+}
+
+/** `както …, така и …`: the second part takes a comma. */
+function correlative(text: string): Hit[] {
+  const hits: Hit[] = [];
+  for (const m of finditer(String.raw`(?<![\w-])[Кк]акто ([^,.;:!?()\n]{1,80}?) (така и)(?![\w-])`, text)) {
+    if (match(String.raw` +не(?![\w-])`, text.slice(m.end, m.end + 4))) continue; // `така и не`: never
+    hits.push(hit("comma_correlative", m.start(2) - 1, m.stop(2), "Comma before „така и“", ", така и"));
+  }
+  return hits;
+}
+
+const DETECTORS = [conjunctions, relatives, adversative, repeated, vocative, splitCompounds, marks, balance, te, indirectQuestion, correlative];
 
 /** Sorted as the rules sort their findings; a stable sort, as Python's. */
 export function byPosition<T extends { start: number; end: number; code: string }>(hits: T[]): T[] {

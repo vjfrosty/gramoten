@@ -41,6 +41,9 @@ _TABLE: list[tuple[str, str]] = [
     ("Comma before „{}“", "Запетая пред „{0}“"),
     ("Comma after the greeting, before the name", "Запетая след поздрава, пред името"),
     ("Set the name off with commas", "Обръщението се отделя със запетаи"),
+    ("No comma after „т.е.“", "След „т.е.“ не се пише запетая"),
+    ("No comma before „дали“ here", "Тук пред „дали“ не се пише запетая"),
+    ("Comma before „така и“", "Запетая пред „така и“"),
     ("„{}“ is one conjunction; the comma goes before it", "„{0}“ е един съюз; запетаята е пред него"),
     ("The comma goes before the preposition: „…, {}“", "Запетаята е пред предлога: „…, {0}“"),
     ("Two commas typed for the opening quote „", "Две запетаи вместо отваряща кавичка „"),
@@ -56,6 +59,7 @@ _TABLE: list[tuple[str, str]] = [
     ("„най-“ is written with a hyphen and no space", "„най-“ се пише с дефис, без интервал"),
     ("„най-“ is written with a hyphen", "„най-“ се пише с дефис"),
     ("Written together: „{}“", "Пише се слято: „{0}“"),
+    ("Written with a hyphen: „{}“", "Пише се полуслято: „{0}“"),
     ("„{}“ twice", "„{0}“ два пъти"),
     ("A range of numbers takes an en dash, no spaces", "Интервал от числа се пише със средно тире, без интервали"),
     # orthography.py
@@ -69,6 +73,10 @@ _TABLE: list[tuple[str, str]] = [
     ("Written as one word", "Пише се слято"),
     ("Write the percentage adjective out", "Прилагателното за процент се изписва с думи"),
     ("„{}“ takes no full stop", "„{0}“ се пише без точка"),
+    (
+        "Months and days of the week are written in lower case",
+        "Имената на месеците и дните от седмицата се пишат с малка буква",
+    ),
     # grammar.py
     ("Only the first word of the phrase takes the article", "Само първата дума от словосъчетанието се членува"),
     (
@@ -81,6 +89,11 @@ _TABLE: list[tuple[str, str]] = [
     ),
     ("After „{}“ use the plural, not the count form", "След „{0}“ се пише множествено число, а не бройна форма"),
     ("The verb agrees with „Вие“: 2nd person plural", "Глаголът се съгласува с „Вие“: 2 л. мн. ч."),
+    ("With „Вие“ the participle is plural", "С „Вие“ причастието е в множествено число"),
+    (
+        "After a number a noun naming people takes the plural",
+        "След число съществителното за лица е в множествено число, а не в бройна форма",
+    ),
 ]
 
 _PATTERNS = [(re.compile("^" + _ANY.join(re.escape(p) for p in en.split("{}")) + "$", re.S), bg) for en, bg in _TABLE]

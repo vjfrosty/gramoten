@@ -1,9 +1,11 @@
 """Bulgarian commas and punctuation, by rule, with no model.
 
 Checked: a comma before a conjunction (че, когато, ако, защото, за да, както
-и, отколкото, след като) or a който-word, before `но` and the second `нито`,
+и, отколкото, след като, т.е.) or a който-word, before `но` and the second `нито`,
 around a vocative; a split compound conjunction (`въпреки, че`), doubled marks,
-unbalanced brackets and unclosed quotes.
+unbalanced brackets and unclosed quotes; no comma after `т.е.`, none before
+`дали` after знам/питам/чудя се/видим (an indirect question), and one before
+`така и` after `както`.
 
 Left out on purpose: a comma before the preposition of `в която`,
 `Например,` (correct by ОПР 81.2, but house style), a fronted `Ако…` clause, a
@@ -345,7 +347,67 @@ def _balance(text: str) -> list[Hit]:
     return hits
 
 
-DETECTORS = (_conjunctions, _relatives, _adversative, _repeated, _vocative, _split_compounds, _marks, _balance)
+def _te(text: str) -> list[Hit]:
+    """`т.е.` joins like a conjunction: a comma before it and none after (BERON 80.2)."""
+    hits = [
+        Hit("comma_after_te", m.start(), m.end(), "No comma after „т.е.“", m.group(1))
+        for m in re.finditer(r"(?<![\w-])([Тт]\. ?е\.),(?= )", text)
+    ]
+    for m in re.finditer(r"(?<=[а-я])( +)(т\. ?е\.)(?= )", text):
+        prev, prev_start = _prev_word(text, m.start(2))
+        if not prev or prev_start is None or prev.lower() in NO_COMMA_PREV:
+            continue
+        gap, fixed = _comma_before(text, prev_start, prev, m.start(2), m.end(2))
+        hits.append(Hit("comma_before_conjunction", gap, m.end(2), "Comma before „т.е.“", fixed))
+    return hits
+
+
+#: Verbs whose indirect question takes no comma: `Не знам дали ще дойде` (ОПР: the comma
+#: goes before че, дето and как, not before дали). Only the verb right before the comma.
+ASKING_VERBS = set(
+    """знам зная знаеш знае знаем знаете знаят знаех знаеше знаехме знаехте знаеха питам питаш пита
+питаме питате питат питах питаше питахме питаха попитам попиташ попита попитаме попитате попитат
+попитах попитахме попитаха чудя чудиш чуди чудим чудите чудят чудех чудеше чудехме чудеха
+проверя провериш провери проверим проверите проверят проверете проверявам проверява проверяват
+разбера разбереш разбере разберем разберете разберат разбра разбрах разбрахме видя видиш види видим
+видите видят вижте зависи зависят зависеше""".split()
+)
+
+
+def _indirect_question(text: str) -> list[Hit]:
+    hits = []
+    for m in re.finditer(r"(?<![\w-])([а-яА-Я]+)(?: се)?, (дали)(?![\w-])", text):
+        if m.group(1).lower() not in ASKING_VERBS:
+            continue
+        if re.compile(r"[^.!?;:]{0,80}?(?<![\w-])или(?![\w-])").match(text, m.end()):
+            continue  # `дали … или …`: whether or not, often set off on purpose
+        hits.append(Hit("comma_indirect_question", m.start(2) - 2, m.start(2), "No comma before „дали“ here", " "))
+    return hits
+
+
+def _correlative(text: str) -> list[Hit]:
+    """`както …, така и …`: the second part takes a comma (DGT 2021; IBL rules)."""
+    hits = []
+    for m in re.finditer(r"(?<![\w-])[Кк]акто ([^,.;:!?()\n]{1,80}?) (така и)(?![\w-])", text):
+        if re.match(r" +не(?![\w-])", text[m.end() : m.end() + 4]):
+            continue  # `така и не дойде`: never
+        hits.append(Hit("comma_correlative", m.start(2) - 1, m.end(2), "Comma before „така и“", ", така и"))
+    return hits
+
+
+DETECTORS = (
+    _conjunctions,
+    _relatives,
+    _adversative,
+    _repeated,
+    _vocative,
+    _split_compounds,
+    _marks,
+    _balance,
+    _te,
+    _indirect_question,
+    _correlative,
+)
 
 
 def check(text: str) -> list[Hit]:

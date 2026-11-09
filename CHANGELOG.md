@@ -11,6 +11,28 @@ All notable changes are listed here. The format follows
   and fixes with the Python package's on every run. Another CI job drives the plugin in
   real WordPress with Chrome, Firefox, WebKit and Safari.
 - Screenshots in the READMEs: the command line, the test page and the WordPress editor.
+- `count_form_person`: after a number a noun that names only people takes the plural,
+  not the count form: `5 служителя` → `служители`, `120 ученика` → `ученици`. A closed list
+  of such nouns; `човек` (`пет човека`), `кандидат` (a vaccine), `оператор`, `член` stay out.
+- `vie_agreement` also reads the л-participle: `Вие сте казал`, `Вие не сте ми казала`,
+  `Вие сте се регистрирал` → `казали`, `регистрирали`. Adjectives and passive participles
+  keep the addressee's sex (`Вие сте поканен`, `доволна`).
+- `date_capital`: a month or a weekday after a day or a preposition is in lower case:
+  `до 15 Септември` → `септември`, `през Май`, `в Неделя` (ОПР т. 41.1). Not inside „…“,
+  not in a title-case heading, and `Август`/`Септември` only after a day or `през`
+  (the emperor, the football club).
+- Commas with `т.е.`: one before it (`студиа т.е. екипи` → `студиа, т.е. екипи`) and none
+  after it (`т.е.,` → `т.е.`, BERON 80.2).
+- `comma_indirect_question`: no comma before `дали` after знам, питам, чудя се, видим:
+  `Не знам, дали ще дойде` → `Не знам дали ще дойде`; `дали … или …` is left alone.
+- `comma_correlative`: `както в София така и в Пловдив` → `както в София, така и в Пловдив`
+  (`така и не` is left alone).
+- Written together or with a hyphen: `от колкото` → `отколкото` after a comparison,
+  `до като` → `докато`, `по ради` → `поради`, `из между` → `измежду`, `току що` → `току-що`,
+  `ноу хау` → `ноу-хау`, `министър председател` → `министър-председател`.
+  `на истина` and `след обед` were measured and left out: both are often right as written.
+- The new rules were read hit by hit on e-mails, web text, bg.wikipedia and Leipzig news
+  and Wikipedia sentences: 501 hits in 8.4 million words, 2 of them wrong.
 - Written together: `дотук`, `дотам`, `допреди`, `докъде`, `докъдето`,
   `донякъде`, `докогато`, `оттук`, `оттам`, and `доколко`/`доколкото` when
   `колко` does not count a noun (`до колко часа` stays apart); `понастоящем`;

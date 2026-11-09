@@ -50,6 +50,43 @@ class Punctuation(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(fixes(text, gramoten.KIND_PUNCTUATION), [])
 
+    def test_te_dali_and_tak_i(self) -> None:
+        cases = {
+            "Съветът не е компетентен, т.е., няма право.": ("comma_after_te", "т.е.,", "т.е."),
+            "Т.е., не.": ("comma_after_te", "Т.е.,", "Т.е."),
+            "Има няколко студиа т.е. доста екипи.": ("comma_before_conjunction", " т.е.", ", т.е."),
+            "Не знам, дали ще дойде.": ("comma_indirect_question", ", ", " "),
+            "Чудя се, дали е вярно.": ("comma_indirect_question", ", ", " "),
+            "Да видим, дали ще стане.": ("comma_indirect_question", ", ", " "),
+            "Работим както в София така и в Пловдив.": ("comma_correlative", " така и", ", така и"),
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertIn(expected, fixes(text, gramoten.KIND_PUNCTUATION))
+
+    def test_te_dali_and_tak_i_near_misses(self) -> None:
+        for text in (
+            "Това е, т.е. важно е.",
+            "Не знам дали ще дойде.",
+            "Не знам, как да го кажа.",
+            "Зависи, дали ще вали или не.",
+            "Попитах го, дали ще дойде.",
+            "Ще дойда, дали искаш или не.",
+            "Работим както в София, така и в Пловдив.",
+            "Както казах така и не дойде.",
+            "Това е и т.е. не е.",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [
+                        c
+                        for c, _, _ in fixes(text, gramoten.KIND_PUNCTUATION)
+                        if c in ("comma_after_te", "comma_indirect_question", "comma_correlative")
+                        or (c == "comma_before_conjunction" and "т.е" in text)
+                    ],
+                    [],
+                )
+
     def test_unclosed_marks(self) -> None:
         codes_found = [i.code for i in gramoten.check("концерт „Старият Криско (и още")]
         self.assertIn("unbalanced_quote", codes_found)

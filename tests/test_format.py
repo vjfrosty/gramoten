@@ -137,6 +137,39 @@ class Orthography(unittest.TestCase):
                 )
 
 
+class DateCapitals(unittest.TestCase):
+    """orthography.py: months and weekdays in lower case (ОПР т. 41.1)."""
+
+    def test_a_capital_month_or_weekday_after_a_day_or_a_preposition(self) -> None:
+        cases = {
+            "Предложението важи до 15 Септември.": ("date_capital", "Септември", "септември"),
+            "Срок за плащане: 20 Декември 2018.": ("date_capital", "Декември", "декември"),
+            "Това стана през Май.": ("date_capital", "Май", "май"),
+            "Работим от Понеделник до Петък.": ("date_capital", "Понеделник", "понеделник"),
+            "Отворено и в Неделя.": ("date_capital", "Неделя", "неделя"),
+            "Пътувахме през Август.": ("date_capital", "Август", "август"),
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertIn(expected, [(i.code, i.text, i.fix) for i in gramoten.check(text)])
+        self.assertEqual(gramoten.fix_text("по повод 1ви Май"), "по повод 1 май")
+
+    def test_names_headings_and_quotes_stay(self) -> None:
+        for text in (
+            "Първият император след Август.",
+            "Той игра за Септември София.",
+            "Наклонът от Септември до Варвара е малък.",
+            "Писах на Неделя Петрова.",
+            "Църквата е близо до Събота пазара.",
+            "Оферти През Май",
+            "Срещата е на ул. „6 Септември“ 10.",
+            "Май е хубав месец.",
+            "на 5 май",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual([i.code for i in gramoten.check(text) if i.code == "date_capital"], [])
+
+
 class AssessmentFixes(unittest.TestCase):
     """Cases where a rule fired wrongly or missed an error."""
 

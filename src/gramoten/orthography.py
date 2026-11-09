@@ -12,6 +12,7 @@ and the EU DGT Bulgarian style guide (2021).
 | `number_adjective` | a number and an adjective in -годишен, -месечен, -дневен… are one word: `5 годишен` → `5-годишен`, `пет-годишен` → `петгодишен` | joined |
 | `percent_adjective` | `10%-на` → `10-процентна` (DGT: the %-form is not acceptable) | spelled out |
 | `title_period` | `г-н`, `г-жа`, `г-ца`, `д-р` take no full stop (BERON 75.2) | without it |
+| `date_capital` | a month or weekday after a day or a preposition is in lower case: `15 Септември` → `15 септември`, `през Май`, `в Неделя` (ОПР т. 41.1) | lower case |
 """
 
 from __future__ import annotations
@@ -266,7 +267,49 @@ def _titles(text: str) -> list[Hit]:
     ]
 
 
-DETECTORS = (_pronoun, _ordinals, _number_adjectives, _percent, _titles)
+WEEKDAYS = ("понеделник", "вторник", "сряда", "четвъртък", "петък", "събота", "неделя")
+#: Words after which a month or a weekday is a date, not a name: `през Май`, `до Петък`.
+DATE_PREPOSITIONS = ("през", "от", "до", "в", "във", "за", "след", "преди", "около")
+#: `Август` (the emperor) and `Септември` (a club, a town) are names after any word but `през`.
+NAMES_TOO = ("август", "септември")
+_DATE_CAPITAL = re.compile(
+    r"(?:(?<![\w.,/-])\d{1,2}[  ]+(%s)|(?<![\w-])(?:%s) (%s)|(?<![\w-])през (%s))(?![\w-])"
+    % (
+        "|".join(m.capitalize() for m in MONTHS),
+        "|".join(DATE_PREPOSITIONS),
+        "|".join(w.capitalize() for w in MONTHS + WEEKDAYS if w not in NAMES_TOO),
+        "|".join(w.capitalize() for w in NAMES_TOO),
+    )
+)
+
+
+def _date_capitals(text: str) -> list[Hit]:
+    """`5 Януари`, `през Май`, `в Понеделник`: a month or a weekday mid-sentence is in lower case
+    (ОПР т. 41.1). Only after a day or a preposition, so a name (`Неделя Петрова`) and a
+    heading in title case (`През Май`) stay alone, and never inside „…“ (`ул. „6 Септември“`).
+    `от Август`, `в Септември` may be the emperor or the football club: those two only after
+    a day or `през`."""
+    hits = []
+    for m in _DATE_CAPITAL.finditer(text):
+        group = next(g for g in (1, 2, 3) if m.group(g))
+        opened = text.count("„", 0, m.start())
+        if opened > text.count("“", 0, m.start()) + text.count("”", 0, m.start()):
+            continue  # inside „…“: a name
+        if text[m.end() : m.end() + 6] == " пазар":
+            continue  # `близо до Събота пазара`: a market in Sofia
+        hits.append(
+            Hit(
+                "date_capital",
+                m.start(group),
+                m.end(group),
+                "Months and days of the week are written in lower case",
+                m.group(group).lower(),
+            )
+        )
+    return hits
+
+
+DETECTORS = (_pronoun, _ordinals, _number_adjectives, _percent, _titles, _date_capitals)
 
 
 def check(text: str) -> list[Hit]:

@@ -100,11 +100,11 @@ Words with digits (`5G`, `S10`) and all-Latin words (`Netflix`) are not spelt, a
 | `typography.py` | `double_space`, `space_before_punctuation`, `space_after_punctuation`, `dash`, `quotes`, `ellipsis`, `decimal_separator`, `abbreviation_space` (`1990г.`, `31.12.2024г.`), `date_leading_zero` (`02 октомври`), `euro_symbol_position` | yes |
 | `typography.py` | `nbsp_number_unit` (quiet) | yes |
 | `typography.py` | `currency_bgn`: a price in лв/лева/BGN, since Bulgaria pays in euro from 2026-01-01 | **no**, and no amount is ever offered: the price is the writer's to set |
-| `punctuation.py` | `comma_before_conjunction`, `comma_before_relative`, `comma_repeated_conjunction`, `comma_vocative`, `comma_inside_compound` | yes, where certain |
+| `punctuation.py` | `comma_before_conjunction` (also before `т.е.`), `comma_before_relative`, `comma_repeated_conjunction`, `comma_vocative`, `comma_inside_compound`, `comma_after_te` (`т.е.,` → `т.е.`), `comma_indirect_question` (`Не знам, дали` → `Не знам дали`), `comma_correlative` (`както А така и Б` → `както А, така и Б`) | yes, where certain |
 | `punctuation.py` | `double_punctuation`, `unbalanced_bracket`, `unbalanced_quote` | no |
-| `lexical.py` (kind `grammar`) | `article_after_preposition` (`от сумарният`), `v_vav`/`s_sas` (`с свободни`), `written_together` (`до сега`, `от тук`, `до колко е`, `тъмно зелен`, `научно-изследователски`), `superlative_hyphen` (`най много`), `number_range` (`10-12`), `repeated_word` (`и и`, fix deletes) | yes |
-| `orthography.py` | `pronoun_i` (`й` → `ѝ`), `ordinal_suffix` (`5-ти` → `5-и`, `1-и` → `1-ви`, `7-ма` → `7-а`, `14-ят` → `14-ият`), `ordinal_date` (`9-ти март` → `9 март`), `ordinal_roman` (`XXI-ви` → `XXI`), `number_adjective` (`19 годишен` → `19-годишен`), `percent_adjective` (`10%-на` → `10-процентна`), `title_period` (`г-н.` → `г-н`) | yes |
-| `grammar.py` (kind `grammar`, needs `morphology.py`) | `double_article` (`Вашите данните`), `article_after_copula` (`е най-добрия`), `count_form` (`24 месеци`), `plural_after_dvama` (`трима сина`), `vie_agreement` (`Вие държи`) | yes, when one form fits |
+| `lexical.py` (kind `grammar`) | `article_after_preposition` (`от сумарният`), `v_vav`/`s_sas` (`с свободни`), `written_together` (`до сега`, `от тук`, `до колко е`, `тъмно зелен`, `научно-изследователски`, `по-евтино от колкото`, `до като`; with a hyphen: `току що`, `ноу хау`, `министър председател`), `superlative_hyphen` (`най много`), `number_range` (`10-12`), `repeated_word` (`и и`, fix deletes) | yes |
+| `orthography.py` | `pronoun_i` (`й` → `ѝ`), `ordinal_suffix` (`5-ти` → `5-и`, `1-и` → `1-ви`, `7-ма` → `7-а`, `14-ят` → `14-ият`), `ordinal_date` (`9-ти март` → `9 март`), `ordinal_roman` (`XXI-ви` → `XXI`), `number_adjective` (`19 годишен` → `19-годишен`), `percent_adjective` (`10%-на` → `10-процентна`), `title_period` (`г-н.` → `г-н`), `date_capital` (`15 Септември`, `през Май`, `в Неделя` → lower case) | yes |
+| `grammar.py` (kind `grammar`, needs `morphology.py`) | `double_article` (`Вашите данните`), `article_after_copula` (`е най-добрия`), `count_form` (`24 месеци`), `count_form_person` (`5 служителя` → `служители`), `plural_after_dvama` (`трима сина`), `vie_agreement` (`Вие държи`, `Вие сте казал` → `казали`) | yes, when one form fits |
 
 **How the punctuation rules were chosen.** Each rule was measured before it shipped:
 - on 471 marketing e-mails (a private set, not included);
@@ -112,7 +112,7 @@ Words with digits (`5G`, `S10`) and all-Latin words (`Netflix`) are not spelt, a
 - by deleting the corpus's own correct commas, to measure recall;
 - against hand-written tricky sentences.
 
-Only precise rules ship. The measured precision is in the docstrings of `punctuation.py` and `lexical.py`, with the rules left out and why. The grammar rules were also read on 22,089 model-written strings and 29 edited books; most samples are under 30 hits.
+Only precise rules ship. The measured precision is in the docstrings of `punctuation.py` and `lexical.py`, with the rules left out and why. The rules added on 2026-11-09 (`count_form_person`, the participle with `Вие`, `date_capital`, the `т.е.`, `дали` and `така и` commas, and the new together/hyphen pairs) were read hit by hit on the marketing e-mails, held-out web text, 34 bg.wikipedia articles, Leipzig news 2022 and 250,000 sentences each of Leipzig news 2020 and Wikipedia 2021: 501 hits in 8.4 million words, 2 judged wrong (network `клиента`, a redundant `означава т.е.`) and 1 unsure. Left out after that reading: `на истина` → `наистина` (mostly `постигане на истина`) and `след обед` → `следобед` (also „after a meal“). The grammar rules were also read on 22,089 model-written strings and 29 edited books; most samples are under 30 hits.
 
 **Sources:** the official orthographic dictionary (ОПР 2012), the Institute for Bulgarian Language's answers, kaksepishe.com, and the EU translators' Bulgarian style guide.
 
