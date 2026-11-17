@@ -197,7 +197,7 @@ function countAfter(text: string, end: number, following: readonly Token[]): Hit
     }
     const [isNoun, nouns] = allNouns(found);
     if (!isNoun || !nouns.every((r) => r.tag.g === "m" && r.tag.n === "p" && r.tag.d === "i")) return [];
-    if (nouns.some(person)) return [];
+    if (nouns.some((r) => person(r) || PERSON_NOUNS.has(r.base))) return []; // `5 хирурзи`: `count_form_person` asks for this plural
     const counts =
       COUNT_OF_PLURAL.get(word.toLowerCase()) ??
       [...new Set(nouns.flatMap((r) => inflect(r.lemma, { n: "c" })))].sort();

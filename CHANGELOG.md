@@ -14,6 +14,9 @@ All notable changes are listed here. The format follows
 - `count_form_person`: after a number a noun that names only people takes the plural,
   not the count form: `5 служителя` → `служители`, `120 ученика` → `ученици`. A closed list
   of such nouns; `човек` (`пет човека`), `кандидат` (a vaccine), `оператор`, `член` stay out.
+  `count_form` leaves the plural of these nouns alone, so the two rules cannot undo each
+  other's fix (`5 хирурзи` stays; before, `count_form` turned it back into `хирурга`
+  for six of the nouns).
 - `vie_agreement` also reads the л-participle: `Вие сте казал`, `Вие не сте ми казала`,
   `Вие сте се регистрирал` → `казали`, `регистрирали`. Adjectives and passive participles
   keep the addressee's sex (`Вие сте поканен`, `доволна`).

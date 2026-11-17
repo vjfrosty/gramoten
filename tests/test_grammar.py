@@ -7,7 +7,7 @@ import unittest
 from helpers import fixes
 
 import gramoten
-from gramoten import spelling
+from gramoten import grammar, morphology, spelling
 
 
 class Grammar(unittest.TestCase):
@@ -104,6 +104,20 @@ class Agreement(unittest.TestCase):
         for text, expected in cases.items():
             with self.subTest(text=text):
                 self.assertIn(expected, fixes(text, gramoten.KIND_GRAMMAR))
+
+    def test_a_noun_for_people_keeps_its_plural_after_a_number(self) -> None:
+        """`count_form` and `count_form_person` must not undo each other's fix."""
+        for text in ("Приехме 5 хирурзи.", "Дойдоха 3 мениджъри.", "Наехме 12 фотографи."):
+            with self.subTest(text=text):
+                self.assertEqual(fixes(text, gramoten.KIND_GRAMMAR), [])
+                self.assertEqual(gramoten.fix_text(text), text)
+        self.assertEqual(gramoten.fix_text("Приехме 5 хирурга."), "Приехме 5 хирурзи.")
+        for noun in sorted(grammar.PERSON_NOUNS):
+            readings = [r for r in morphology.analyse(noun) if r.base == noun]
+            for plural in sorted({f for r in readings for f in morphology.inflect(r.lemma, n="p", d="i")}):
+                with self.subTest(noun=noun, plural=plural):
+                    found = [code for code, _, _ in fixes(f"Дойдоха 5 {plural}.", gramoten.KIND_GRAMMAR)]
+                    self.assertNotIn("count_form", found)
 
     def test_correct_sentences_that_look_like_errors(self) -> None:
         for text in (

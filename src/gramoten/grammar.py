@@ -314,8 +314,8 @@ def _count_after(text: str, end: int, following: list[Token]) -> list[Hit]:
             r.tag.get("g") == "m" and r.tag.get("n") == "p" and r.tag.get("d") == "i" for r in nouns
         ):
             return []
-        if any(_person(r) for r in nouns):
-            return []
+        if any(_person(r) or r.base in PERSON_NOUNS for r in nouns):
+            return []  # `5 хирурзи`: `count_form_person` asks for this plural
         counts = COUNT_OF_PLURAL.get(word.lower()) or sorted(
             {f for r in nouns for f in morphology.inflect(r.lemma, n="c")}
         )
