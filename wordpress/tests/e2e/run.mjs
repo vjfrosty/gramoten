@@ -39,6 +39,10 @@ async function scenario(name, fn) {
     failures.push(`${name}: threw ${String(e.message).split("\n").slice(0, 3).join(" ")}`);
   }
   console.log(`${failures.length === before ? "ok  " : "FAIL"} ${name}`);
+  // In CI, also as an annotation: those can be read without signing in.
+  if (process.env.GITHUB_ACTIONS) {
+    for (const failure of failures.slice(before)) console.log(`::error title=${name}::${failure.replaceAll("\n", "%0A")}`);
+  }
 }
 
 /** Errors that belong to WordPress or to what a scenario does on purpose. */

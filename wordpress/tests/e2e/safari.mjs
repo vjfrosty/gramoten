@@ -86,8 +86,14 @@ try {
   await wait(2000);
   same("fix all", await run(`return wp.data.select("core/editor").getEditedPostContent().includes("отивам във Франция")`), true);
   same("no errors", await run("return window.__errors"), []);
+} catch (e) {
+  failures.push(`threw ${String(e.message).split("\n")[0]}`);
 } finally {
   await driver.quit();
 }
-for (const failure of failures) console.log(`\n- ${failure}`);
+for (const failure of failures) {
+  console.log(`\n- ${failure}`);
+  // In CI, also as an annotation: those can be read without signing in.
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=safari::${failure.replaceAll("\n", "%0A")}`);
+}
 process.exit(failures.length ? 1 : 0);

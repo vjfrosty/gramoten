@@ -80,9 +80,16 @@ jobs:
       - run: npx playwright-core install --with-deps ${{ matrix.engine }}
       - run: |
           npx @wp-playground/cli server --port=9400 --login --blueprint=blueprint-empty.json > server.log 2>&1 &
-          timeout 300 sh -c 'until curl -s -o /dev/null http://127.0.0.1:9400/; do sleep 2; done'
+          # The port answers 502 while WordPress boots: wait for WordPress itself.
+          for i in $(seq 1 150); do
+            case "$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:9400/)" in 200|302) exit 0;; esac
+            sleep 2
+          done
+          echo "::error::WordPress did not start"
+          cat server.log
+          exit 1
       - run: node run.mjs http://127.0.0.1:9400 --engine ${{ matrix.engine }} --upload ../../gramoten.zip --remove-at-end
-        timeout-minutes: 15
+        timeout-minutes: 30
 
   # Real Safari exists only on a Mac.
   wordpress-safari:
@@ -106,7 +113,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/plugin"
           unzip -q ../../gramoten.zip -d "$RUNNER_TEMP/plugin"
           npx @wp-playground/cli server --port=9400 --login --blueprint=blueprint-active.json --mount-dir "$RUNNER_TEMP/plugin/gramoten" /wordpress/wp-content/plugins/gramoten > server.log 2>&1 &
-          for i in $(seq 1 150); do curl -s -o /dev/null http://127.0.0.1:9400/ && break; sleep 2; done
+          # The port answers 502 while WordPress boots: wait for WordPress itself.
+          for i in $(seq 1 150); do
+            case "$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:9400/)" in 200|302) exit 0;; esac
+            sleep 2
+          done
+          echo "::error::WordPress did not start"
+          cat server.log
+          exit 1
       - run: node safari.mjs http://127.0.0.1:9400
         timeout-minutes: 15
 
